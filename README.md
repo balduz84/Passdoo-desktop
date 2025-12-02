@@ -1,31 +1,43 @@
-# Passdoo Desktop
-
-Desktop application for Passdoo password manager, built with [Tauri](https://tauri.app/) for macOS and Windows.
-
-![Passdoo Desktop](https://img.shields.io/badge/version-1.0.0-blue)
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)
-![License](https://img.shields.io/badge/license-Proprietary-red)
-
-## Features
-
-- 🔐 **Secure Authentication** - Device code flow for seamless login
-- 📂 **Organized Passwords** - Personal and Shared password tabs
-- 👥 **Client Grouping** - Passwords organized by client/partner
-- 📋 **Quick Copy** - One-click copy for usernames and passwords
-- 🎨 **Modern UI** - Clean bordeaux-themed interface
-- 🖥️ **Cross-platform** - Native apps for macOS and Windows
-
-## Screenshots
+# 🔐 Passdoo Desktop
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="Passdoo Desktop Screenshot" width="400">
+  <img src="src-tauri/icons/128x128.png" alt="Passdoo Logo" width="128"/>
 </p>
 
-## Installation
+<p align="center">
+  <strong>Password Manager for ODOO - Desktop Application</strong><br>
+  Access your passwords saved in Passdoo directly from your desktop
+</p>
+
+<p align="center">
+  <a href="https://portal.novacs.net/passdoo/downloads">📥 Download</a> •
+  <a href="#-installation">📖 Installation</a> •
+  <a href="#-usage">🚀 Usage</a>
+</p>
+
+---
+
+## ✨ Features
+
+- **Secure Authentication** - Device code flow for seamless login
+- **Organized Passwords** - Personal and Shared password tabs
+- **Client Grouping** - Passwords organized by client/partner with logos
+- **Quick Copy** - One-click copy for usernames and passwords
+- **Real-time Search** - Quickly search through all your passwords
+- **Cross-platform** - Native apps for macOS and Windows
+
+## 🚀 Installation
+
+### Prerequisites
+
+- macOS 10.15+ or Windows 10+
+- Account configured on https://portal.novacs.net
 
 ### macOS
 
-1. Download `Passdoo_x.x.x_aarch64.dmg` (Apple Silicon) or `Passdoo_x.x.x_x64.dmg` (Intel) from [Releases](https://github.com/balduz84/Passdoo-desktop/releases)
+1. Download the latest version from [Releases](https://github.com/balduz84/Passdoo-desktop/releases)
+   - `Passdoo_x.x.x_aarch64.dmg` for Apple Silicon (M1/M2/M3)
+   - `Passdoo_x.x.x_x64.dmg` for Intel
 2. Open the DMG file
 3. Drag Passdoo to Applications folder
 4. Open Passdoo from Applications
@@ -37,7 +49,38 @@ Desktop application for Passdoo password manager, built with [Tauri](https://tau
 3. Follow the installation wizard
 4. Launch Passdoo from Start Menu
 
-## Development
+## 📖 Usage
+
+### First Login
+
+1. Launch the Passdoo application
+2. A unique 6-character device code will be displayed
+3. Click "Authenticate" to open the web portal
+4. Enter the device code on the web portal
+5. The app will automatically detect authentication and load your passwords
+
+### Browsing Passwords
+
+- Use the **Personal** and **Shared** tabs to filter passwords
+- Passwords are grouped by client/partner
+- Click on a client section to expand/collapse
+- Use the search bar to find passwords quickly
+
+### Copying Credentials
+
+- Click the copy icon next to username to copy it
+- Click the copy icon next to password to copy it
+- A confirmation message will appear
+
+## 🔒 Security
+
+- Passwords are stored encrypted in the ODOO database
+- Authentication uses secure device code flow
+- No passwords are stored locally
+- Bearer token authentication for API calls
+- Automatic session management
+
+## 🛠️ Development
 
 ### Prerequisites
 
@@ -68,29 +111,31 @@ npm run tauri build
 
 Build outputs will be in `src-tauri/target/release/bundle/`.
 
-## Tech Stack
+## 🏗️ Tech Stack
 
 - **Frontend**: Vanilla JavaScript, CSS
 - **Backend**: Rust with Tauri 2.0
 - **Build**: Vite
-- **API**: Odoo REST API with Bearer token authentication
+- **API**: ODOO REST API with Bearer token authentication
 
-## Configuration
+## 📝 Notes
 
-The app connects to the Passdoo server at `portal.novacs.net`. This is configured in `src/main.js`.
+- The app connects to the Passdoo server at `portal.novacs.net`
+- Designed to work with ODOO 18 Enterprise Edition
+- Requires the Passdoo module installed and configured
 
-## Authentication Flow
+## 📄 License
 
-1. App generates a 6-character device code
-2. User opens browser to authenticate
-3. User enters the device code on the web portal
-4. App polls for authentication completion
-5. Upon success, app receives access token
+Copyright © 2025 NovaCS
 
-## License
+All rights reserved.
 
-Proprietary - © 2024 Novacs Srl. All rights reserved.
+## 🔗 Useful Links
 
-## Support
+- [Passdoo Browser Extension](https://github.com/balduz84/Passdoo-browser-extension)
+- [Download Page](https://portal.novacs.net/passdoo/downloads)
+- [NovaCS](https://www.novacs.net)
 
-For support, contact [support@novacs.net](mailto:support@novacs.net)
+## 🤝 Support
+
+For issues or requests, contact NovaCS technical support.
