@@ -1,0 +1,52 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Passdoo",
+  "version": "1.0.0",
+  "identifier": "net.novacs.passdoo",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Passdoo - Password Manager",
+        "width": 900,
+        "height": 700,
+        "minWidth": 600,
+        "minHeight": 500,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' https://*.novacs.net https://portal.novacs.net https://login.microsoftonline.com https://*.microsoft.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.13"
+    },
+    "windows": {
+      "wix": null,
+      "nsis": null
+    }
+  }
+}
