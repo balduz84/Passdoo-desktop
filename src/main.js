@@ -737,17 +737,11 @@ class PassdooApp {
 
         const searchTerm = document.getElementById('search-input').value.toLowerCase();
         
-        // Prima filtra per mostrare solo le password accessibili all'utente
-        // (il server dovrebbe già farlo, ma per sicurezza filtriamo anche lato client)
-        let accessiblePasswords = this.passwords.filter(p => {
-            // Personali: is_owner E non condivise
-            const isMyPersonal = p.is_owner && !p.is_shared;
-            // Condivise: is_shared = true (il server restituisce solo quelle accessibili all'utente)
-            const isSharedWithMe = p.is_shared;
-            return isMyPersonal || isSharedWithMe;
-        });
+        // Il server già restituisce solo le password accessibili all'utente,
+        // non serve filtrare nuovamente lato client
+        // (questo era il bug che escludeva alcune password per i manager)
         
-        const filtered = accessiblePasswords.filter(p => {
+        const filtered = this.passwords.filter(p => {
             // Filter by tab
             // Personali: create dall'utente (is_owner) E non condivise
             // Condivise: is_shared = true
@@ -757,7 +751,7 @@ class PassdooApp {
             if (this.currentTab === 'shared') {
                 if (!p.is_shared) return false;
             }
-            // 'all' tab shows all accessible passwords (already filtered above)
+            // 'all' tab shows all passwords returned by server
             
             // Filter by search
             if (searchTerm) {
