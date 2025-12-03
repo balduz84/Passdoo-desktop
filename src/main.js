@@ -1139,9 +1139,59 @@ class PassdooApp {
         this.currentPassword = null;
     }
 
-    showAddPasswordModal() {
+    async showAddPasswordModal() {
         document.getElementById('add-password-form').reset();
+        
+        // Carica le categorie dinamicamente
+        await this.loadCategories();
+        
         document.getElementById('add-password-modal').style.display = 'flex';
+    }
+
+    async loadCategories() {
+        const categorySelect = document.getElementById('new-category');
+        
+        try {
+            const response = await fetch(`${this.baseUrl}/passdoo/api/extension/categories`, {
+                method: 'GET',
+                headers: this.getAuthHeaders()
+            });
+            
+            const data = await response.json();
+            
+            categorySelect.innerHTML = '';
+            
+            if (data.success && data.categories && data.categories.length > 0) {
+                data.categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id || cat.value;
+                    option.textContent = cat.label || cat.name;
+                    categorySelect.appendChild(option);
+                });
+            } else {
+                // Fallback a categorie default
+                const defaultCategories = [
+                    { id: 'web', label: 'Siti Web' },
+                    { id: 'database', label: 'Database' },
+                    { id: 'server', label: 'Server' },
+                    { id: 'email', label: 'Email' },
+                    { id: 'other', label: 'Altro' }
+                ];
+                defaultCategories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.label;
+                    categorySelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
+            // In caso di errore, mostra categorie di fallback
+            categorySelect.innerHTML = `
+                <option value="web">Siti Web</option>
+                <option value="other">Altro</option>
+            `;
+        }
     }
 
     hideAddPasswordModal() {
@@ -1159,6 +1209,9 @@ class PassdooApp {
         const notes = document.getElementById('new-notes').value;
 
         try {
+            // Determina se category è un ID numerico o una stringa
+            const isNumericCategory = !isNaN(category) && category !== '';
+            
             const response = await fetch(`${this.baseUrl}/passdoo/api/extension/passwords`, {
                 method: 'POST',
                 headers: this.getAuthHeaders(),
@@ -1168,7 +1221,8 @@ class PassdooApp {
                     username,
                     password,
                     partner_id: clientId ? parseInt(clientId) : null,
-                    category: category || 'web',
+                    category_id: isNumericCategory ? parseInt(category) : null,
+                    category: !isNumericCategory ? (category || 'web') : null,
                     is_shared: isShared,
                     description: notes
                 })
@@ -1230,6 +1284,7 @@ class PassdooApp {
     }
 
     showAboutModal() {
+        document.getElementById('about-version-text').textContent = `Versione ${this.version}`;
         document.getElementById('about-modal').style.display = 'flex';
     }
 

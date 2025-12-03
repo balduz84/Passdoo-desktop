@@ -4,9 +4,11 @@
     --primary-light: #f5e8e8;
     --primary-lighter: #faf4f4;
     --bg-color: #f8fafc;
+    --bg-secondary: #f1f5f9;
     --surface-color: #ffffff;
     --text-primary: #1e293b;
     --text-secondary: #64748b;
+    --text-muted: #94a3b8;
     --border-color: #e2e8f0;
     --error-color: #ef4444;
     --success-color: #10b981;
@@ -946,8 +948,29 @@ body {
 
 /* About Modal */
 .about-content {
-    max-width: 400px;
+    max-width: 380px;
     text-align: center;
+    overflow: hidden;
+}
+
+.about-content .modal-header {
+    background: var(--primary-color);
+    color: white;
+    border-bottom: none;
+    padding: 16px 20px;
+}
+
+.about-content .modal-header h2 {
+    color: white;
+}
+
+.about-content .modal-close {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.about-content .modal-close:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .about-body {
@@ -959,30 +982,32 @@ body {
 }
 
 .about-title {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 4px;
 }
 
 .about-version {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin-bottom: 24px;
+    font-size: 13px;
+    color: var(--primary-color);
+    font-weight: 500;
+    margin-bottom: 20px;
 }
 
 .about-info {
-    background-color: var(--bg-color);
+    text-align: left;
+    border: 1px solid var(--border-color);
     border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
+    overflow: hidden;
 }
 
 .about-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -990,19 +1015,23 @@ body {
     border-bottom: none;
 }
 
+.about-row-centered {
+    justify-content: center;
+}
+
 .about-label {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-secondary);
 }
 
 .about-value {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-primary);
     font-weight: 500;
 }
 
 .about-link {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--primary-color);
     text-decoration: none;
     font-weight: 500;
@@ -1013,15 +1042,20 @@ body {
 }
 
 .about-description {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-secondary);
-    margin-bottom: 16px;
     line-height: 1.6;
+    margin-bottom: 16px;
+    text-align: center;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
 }
 
 .about-copyright {
     font-size: 11px;
-    color: var(--text-secondary);
+    color: var(--text-muted);
+    margin: 0;
 }
 
 /* Responsive */
