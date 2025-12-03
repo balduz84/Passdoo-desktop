@@ -1,6 +1,6 @@
 [package]
 name = "passdoo"
-version = "0.1.0"
+version = "1.2.0"
 description = "Passdoo Password Manager Desktop App"
 authors = ["NovaCS"]
 license = "MIT"

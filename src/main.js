@@ -737,11 +737,27 @@ class PassdooApp {
 
         const searchTerm = document.getElementById('search-input').value.toLowerCase();
         
-        const filtered = this.passwords.filter(p => {
-            // Filter by tab (skip filter for 'all' tab)
-            if (this.currentTab === 'personal' && p.is_shared) return false;
-            if (this.currentTab === 'shared' && !p.is_shared) return false;
-            // 'all' tab shows everything
+        // Prima filtra per mostrare solo le password accessibili all'utente
+        // (il server dovrebbe già farlo, ma per sicurezza filtriamo anche lato client)
+        let accessiblePasswords = this.passwords.filter(p => {
+            // Personali: is_owner E non condivise
+            const isMyPersonal = p.is_owner && !p.is_shared;
+            // Condivise: is_shared = true (il server restituisce solo quelle accessibili all'utente)
+            const isSharedWithMe = p.is_shared;
+            return isMyPersonal || isSharedWithMe;
+        });
+        
+        const filtered = accessiblePasswords.filter(p => {
+            // Filter by tab
+            // Personali: create dall'utente (is_owner) E non condivise
+            // Condivise: is_shared = true
+            if (this.currentTab === 'personal') {
+                if (!p.is_owner || p.is_shared) return false;
+            }
+            if (this.currentTab === 'shared') {
+                if (!p.is_shared) return false;
+            }
+            // 'all' tab shows all accessible passwords (already filtered above)
             
             // Filter by search
             if (searchTerm) {
