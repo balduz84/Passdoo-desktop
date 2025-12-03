@@ -503,6 +503,30 @@ body {
     flex-shrink: 0;
 }
 
+.client-filter-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.client-header:hover .client-filter-btn {
+    opacity: 1;
+}
+
+.client-filter-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+
 .client-passwords {
     padding-left: 12px;
     border-left: 2px solid var(--primary-light);
@@ -510,7 +534,7 @@ body {
     margin-top: 6px;
     overflow: hidden;
     transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.25s ease;
-    max-height: 2000px;
+    max-height: 5000px;
     opacity: 1;
 }
 
@@ -527,6 +551,172 @@ body {
 .client-passwords .password-card:last-child {
     margin-bottom: 0;
 }
+
+/* Category Groups */
+.category-group {
+    margin-bottom: 4px;
+}
+
+.category-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.category-group-header:hover {
+    background: var(--primary-lighter);
+    border-color: var(--primary-light);
+}
+
+.category-icon {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-light);
+    border-radius: 6px;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.category-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.category-name {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.category-count {
+    background: var(--border-color);
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.category-chevron {
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.category-group:not(.collapsed) .category-chevron {
+    transform: rotate(180deg);
+}
+
+.category-group-content {
+    padding-left: 12px;
+    border-left: 2px solid var(--primary-light);
+    margin-left: 12px;
+    margin-top: 4px;
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.25s ease;
+    max-height: 3000px;
+    opacity: 1;
+}
+
+.category-group.collapsed .category-group-content {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+}
+
+.category-group-content .password-card {
+    margin-bottom: 3px;
+}
+
+.category-group-content .password-card:last-child {
+    margin-bottom: 0;
+}
+
+/* Standalone category (when filtered by client) */
+.category-standalone {
+    margin-bottom: 6px;
+}
+
+.category-standalone .category-group-header {
+    padding: 8px 12px;
+}
+
+.category-standalone .category-icon {
+    width: 30px;
+    height: 30px;
+}
+
+.category-standalone .category-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.category-standalone .category-name {
+    font-size: 13px;
+}
+
+/* Password card with category icon */
+.category-icon-card {
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.category-icon-card svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Client filter indicator */
+.client-filter-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--primary-light);
+    border-bottom: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    font-size: 13px;
+}
+
+.filter-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-label svg {
+    flex-shrink: 0;
+}
+
+.filter-clear-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--primary-color);
+    transition: background 0.15s;
+}
+
+.filter-clear-btn:hover {
+    background: rgba(82, 18, 19, 0.15);
+}
+
 
 .password-icon {
     width: 36px;

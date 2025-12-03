@@ -1,7 +1,7 @@
 // Passdoo Desktop - Main Application
 
 // Versione dell'applicazione
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 class PassdooApp {
     constructor() {
@@ -15,6 +15,7 @@ class PassdooApp {
         this.currentPassword = null;
         this.authWindow = null;
         this.version = APP_VERSION;
+        this.clientFilter = null;  // { id, name } - Filtro per cliente
         
         this.init();
     }
@@ -662,6 +663,63 @@ class PassdooApp {
         });
     }
 
+    /**
+     * Group passwords by client and then by category
+     * Returns { clientGroups: [...], noClientPasswords: [...] }
+     */
+    groupPasswordsByClient(passwords) {
+        const groups = {};
+        const noClient = [];
+        
+        passwords.forEach(password => {
+            if (password.partner_id && password.partner_name) {
+                const clientKey = password.partner_id;
+                if (!groups[clientKey]) {
+                    groups[clientKey] = {
+                        id: password.partner_id,
+                        name: password.partner_name,
+                        image: password.partner_image,
+                        categories: {},
+                        totalCount: 0
+                    };
+                }
+                
+                // Group by category within the client
+                const categoryKey = password.category || 'other';
+                const categoryName = getCategoryDisplayName(categoryKey);
+                
+                if (!groups[clientKey].categories[categoryKey]) {
+                    groups[clientKey].categories[categoryKey] = {
+                        key: categoryKey,
+                        name: categoryName,
+                        passwords: []
+                    };
+                }
+                groups[clientKey].categories[categoryKey].passwords.push(password);
+                groups[clientKey].totalCount++;
+            } else {
+                noClient.push(password);
+            }
+        });
+        
+        // Convert categories to sorted arrays for each client
+        Object.values(groups).forEach(group => {
+            group.categoryList = Object.values(group.categories).sort((a, b) => 
+                a.name.localeCompare(b.name)
+            );
+        });
+        
+        // Sort groups by client name
+        const sortedGroups = Object.values(groups).sort((a, b) => 
+            a.name.localeCompare(b.name)
+        );
+        
+        return {
+            clientGroups: sortedGroups,
+            noClientPasswords: noClient
+        };
+    }
+
     renderPasswords() {
         const loadingState = document.getElementById('loading-state');
         const emptyState = document.getElementById('empty-state');
@@ -671,10 +729,13 @@ class PassdooApp {
 
         const searchTerm = document.getElementById('search-input').value.toLowerCase();
         
-        const filtered = this.passwords.filter(p => {
+        let filtered = this.passwords.filter(p => {
             // Filter by tab
             if (this.currentTab === 'personal' && p.is_shared) return false;
             if (this.currentTab === 'shared' && !p.is_shared) return false;
+            
+            // Filter by client filter
+            if (this.clientFilter && p.partner_id !== this.clientFilter.id) return false;
             
             // Filter by search
             if (searchTerm) {
@@ -700,58 +761,102 @@ class PassdooApp {
         emptyState.style.display = 'none';
         container.innerHTML = '';
 
-        // Group passwords by client
-        const grouped = {};
-        const noClient = [];
-        
-        filtered.forEach(password => {
-            if (password.partner_id && password.partner_name) {
-                if (!grouped[password.partner_id]) {
-                    grouped[password.partner_id] = {
-                        name: password.partner_name,
-                        image: password.partner_image,
-                        passwords: []
-                    };
-                }
-                grouped[password.partner_id].passwords.push(password);
-            } else {
-                noClient.push(password);
-            }
-        });
+        // If client filter is active, show only categories (without client wrapper)
+        if (this.clientFilter) {
+            this.renderCategoriesOnly(container, filtered);
+            return;
+        }
 
-        // Render grouped by client
-        const sortedClients = Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name));
-        
-        sortedClients.forEach(client => {
-            const section = this.createClientSection(client.name, client.passwords, client.image);
+        // Group passwords by client and category
+        const grouped = this.groupPasswordsByClient(filtered);
+
+        // Render client groups
+        grouped.clientGroups.forEach(group => {
+            const section = this.createClientSection(group);
             container.appendChild(section);
         });
 
         // Render passwords without client at the end
-        if (noClient.length > 0) {
-            const section = this.createClientSection('Senza cliente', noClient, null);
+        if (grouped.noClientPasswords.length > 0) {
+            const section = this.createNoClientSection(grouped.noClientPasswords);
             container.appendChild(section);
         }
     }
 
-    createClientSection(clientName, passwords, clientImage) {
+    /**
+     * Render categories only (used when client filter is active)
+     */
+    renderCategoriesOnly(container, passwords) {
+        // Group by category
+        const categories = {};
+        passwords.forEach(password => {
+            const catKey = password.category || 'other';
+            const catName = getCategoryDisplayName(catKey);
+            if (!categories[catKey]) {
+                categories[catKey] = { key: catKey, name: catName, passwords: [] };
+            }
+            categories[catKey].passwords.push(password);
+        });
+        
+        const categoryList = Object.values(categories).sort((a, b) => a.name.localeCompare(b.name));
+        
+        categoryList.forEach(category => {
+            const categoryEl = this.createCategorySection(category, true);
+            container.appendChild(categoryEl);
+        });
+    }
+
+    /**
+     * Create a category section element
+     */
+    createCategorySection(category, isStandalone = false) {
+        const section = document.createElement('div');
+        section.className = 'category-group collapsed' + (isStandalone ? ' category-standalone' : '');
+        
+        const header = document.createElement('div');
+        header.className = 'category-group-header';
+        header.innerHTML = `
+            <div class="category-icon">${getCategoryIcon(category.key)}</div>
+            <span class="category-name">${this.escapeHtml(category.name)}</span>
+            <span class="category-count">${category.passwords.length}</span>
+            <div class="category-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+        `;
+        
+        header.onclick = () => {
+            section.classList.toggle('collapsed');
+        };
+        
+        section.appendChild(header);
+        
+        const content = document.createElement('div');
+        content.className = 'category-group-content';
+        
+        category.passwords.forEach(password => {
+            const card = this.createPasswordCard(password);
+            content.appendChild(card);
+        });
+        
+        section.appendChild(content);
+        return section;
+    }
+
+    /**
+     * Create a client section with categories inside
+     */
+    createClientSection(group) {
         const section = document.createElement('div');
         section.className = 'client-section collapsed';
         
-        // Crea l'icona del cliente (immagine, lucchetto per 'Senza cliente', o iniziale)
+        // Build client icon HTML
         let clientIconHtml;
-        if (clientName === 'Senza cliente') {
-            // Icona lucchetto per 'Senza cliente'
-            clientIconHtml = `<div class="client-icon client-icon-lock">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-            </div>`;
-        } else if (clientImage) {
-            clientIconHtml = `<img class="client-logo" src="data:image/png;base64,${clientImage}" alt="${this.escapeHtml(clientName)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="client-icon" style="display:none;">${clientName.charAt(0).toUpperCase()}</div>`;
+        if (group.image) {
+            clientIconHtml = `<img class="client-logo" src="data:image/png;base64,${group.image}" alt="${this.escapeHtml(group.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="client-icon" style="display:none;">${group.name.charAt(0).toUpperCase()}</div>`;
         } else {
-            clientIconHtml = `<div class="client-icon">${clientName.charAt(0).toUpperCase()}</div>`;
+            clientIconHtml = `<div class="client-icon">${group.name.charAt(0).toUpperCase()}</div>`;
         }
         
         const header = document.createElement('div');
@@ -761,27 +866,148 @@ class PassdooApp {
                 <path fill="currentColor" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
             </svg>
             ${clientIconHtml}
-            <span class="client-name">${this.escapeHtml(clientName)}</span>
+            <span class="client-name">${this.escapeHtml(group.name)}</span>
+            <button class="client-filter-btn" data-client-id="${group.id}" data-client-name="${this.escapeHtml(group.name)}" title="Filtra per questo cliente">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+            </button>
+            <span class="client-count">${group.totalCount}</span>
+        `;
+        
+        // Toggle collapse on header click (but not on filter button)
+        header.onclick = (e) => {
+            if (e.target.closest('.client-filter-btn')) {
+                e.stopPropagation();
+                const btn = e.target.closest('.client-filter-btn');
+                this.setClientFilter(parseInt(btn.dataset.clientId), btn.dataset.clientName);
+                return;
+            }
+            section.classList.toggle('collapsed');
+        };
+        
+        section.appendChild(header);
+        
+        const content = document.createElement('div');
+        content.className = 'client-passwords';
+        
+        // Add category sections inside client
+        group.categoryList.forEach(category => {
+            const categoryEl = this.createCategorySection(category, false);
+            content.appendChild(categoryEl);
+        });
+        
+        section.appendChild(content);
+        return section;
+    }
+
+    /**
+     * Create section for passwords without client
+     */
+    createNoClientSection(passwords) {
+        // Group by category
+        const categories = {};
+        passwords.forEach(p => {
+            const catKey = p.category || 'other';
+            const catName = getCategoryDisplayName(catKey);
+            if (!categories[catKey]) {
+                categories[catKey] = { key: catKey, name: catName, passwords: [] };
+            }
+            categories[catKey].passwords.push(p);
+        });
+        
+        const categoryList = Object.values(categories).sort((a, b) => a.name.localeCompare(b.name));
+        
+        const section = document.createElement('div');
+        section.className = 'client-section collapsed';
+        
+        const header = document.createElement('div');
+        header.className = 'client-header';
+        header.innerHTML = `
+            <svg class="collapse-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+            </svg>
+            <div class="client-icon client-icon-lock">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+            </div>
+            <span class="client-name" style="color: var(--text-secondary);">Senza cliente</span>
             <span class="client-count">${passwords.length}</span>
         `;
         
-        // Toggle collapse on header click
         header.onclick = () => {
             section.classList.toggle('collapsed');
         };
         
         section.appendChild(header);
         
-        const list = document.createElement('div');
-        list.className = 'client-passwords';
+        const content = document.createElement('div');
+        content.className = 'client-passwords';
         
-        passwords.forEach(password => {
-            const card = this.createPasswordCard(password);
-            list.appendChild(card);
+        categoryList.forEach(category => {
+            const categoryEl = this.createCategorySection(category, false);
+            content.appendChild(categoryEl);
         });
         
-        section.appendChild(list);
+        section.appendChild(content);
         return section;
+    }
+
+    /**
+     * Set client filter
+     */
+    setClientFilter(clientId, clientName) {
+        this.clientFilter = { id: clientId, name: clientName };
+        this.updateClientFilterUI();
+        this.renderPasswords();
+    }
+
+    /**
+     * Clear client filter
+     */
+    clearClientFilter() {
+        this.clientFilter = null;
+        this.updateClientFilterUI();
+        this.renderPasswords();
+    }
+
+    /**
+     * Update client filter UI indicator
+     */
+    updateClientFilterUI() {
+        let filterIndicator = document.getElementById('client-filter-indicator');
+        
+        if (this.clientFilter) {
+            if (!filterIndicator) {
+                filterIndicator = document.createElement('div');
+                filterIndicator.id = 'client-filter-indicator';
+                filterIndicator.className = 'client-filter-indicator';
+                const toolbar = document.querySelector('.toolbar');
+                if (toolbar) {
+                    toolbar.insertAdjacentElement('afterend', filterIndicator);
+                }
+            }
+            filterIndicator.innerHTML = `
+                <span class="filter-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    Filtrato per: <strong>${this.escapeHtml(this.clientFilter.name)}</strong>
+                </span>
+                <button class="filter-clear-btn" title="Rimuovi filtro">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            `;
+            filterIndicator.querySelector('.filter-clear-btn').onclick = () => this.clearClientFilter();
+            filterIndicator.style.display = 'flex';
+        } else if (filterIndicator) {
+            filterIndicator.style.display = 'none';
+        }
     }
 
     createPasswordCard(password) {
@@ -789,7 +1015,8 @@ class PassdooApp {
         card.className = 'password-card';
         card.onclick = () => this.showPasswordDetail(password);
 
-        const initial = (password.name || 'P').charAt(0).toUpperCase();
+        // Use category icon instead of initial
+        const categoryIcon = getCategoryIcon(password.category || 'other');
         
         // Crea il link URL se presente
         let urlHtml = '';
@@ -806,7 +1033,7 @@ class PassdooApp {
         }
         
         card.innerHTML = `
-            <div class="password-icon">${initial}</div>
+            <div class="password-icon category-icon-card">${categoryIcon}</div>
             <div class="password-info">
                 <div class="password-name">${this.escapeHtml(password.name || 'Senza nome')}</div>
                 <div class="password-username">${this.escapeHtml(password.username || '')}</div>
@@ -925,6 +1152,7 @@ class PassdooApp {
         const username = document.getElementById('new-username').value;
         const password = document.getElementById('new-password').value;
         const clientId = document.getElementById('new-client').value;
+        const category = document.getElementById('new-category').value;
         const isShared = document.getElementById('new-is-shared').checked;
         const notes = document.getElementById('new-notes').value;
 
@@ -938,6 +1166,7 @@ class PassdooApp {
                     username,
                     password,
                     partner_id: clientId ? parseInt(clientId) : null,
+                    category: category || 'web',
                     is_shared: isShared,
                     description: notes
                 })
@@ -1037,6 +1266,43 @@ class PassdooApp {
         div.textContent = text;
         return div.innerHTML;
     }
+}
+
+// Helper functions for categories (ported from browser extension)
+const CATEGORY_NAMES = {
+    'web': 'Siti Web',
+    'server': 'Server',
+    'database': 'Database',
+    'email': 'Email',
+    'vpn': 'VPN',
+    'wifi': 'WiFi',
+    'api': 'API',
+    'certificate': 'Certificati',
+    'ssh': 'SSH',
+    'ftp': 'FTP',
+    'other': 'Altro'
+};
+
+function getCategoryDisplayName(category) {
+    return CATEGORY_NAMES[category] || category || 'Altro';
+}
+
+function getCategoryIcon(category) {
+    const icons = {
+        web: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+        database: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',
+        server: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>',
+        email: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+        vpn: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+        wifi: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
+        api: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+        certificate: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>',
+        ssh: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8l4 4-4 4"/><line x1="12" y1="16" x2="18" y2="16"/></svg>',
+        ftp: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+        other: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+    };
+    
+    return icons[category] || icons.other;
 }
 
 // Initialize app
