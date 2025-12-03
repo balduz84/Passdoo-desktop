@@ -350,8 +350,11 @@ body {
 }
 
 .tab {
-    padding: 12px 24px;
-    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 20px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--text-secondary);
     background: transparent;
@@ -359,6 +362,10 @@ body {
     border-bottom: 2px solid transparent;
     cursor: pointer;
     transition: color 0.15s, border-color 0.15s;
+}
+
+.tab svg {
+    flex-shrink: 0;
 }
 
 .tab:hover {

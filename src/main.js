@@ -730,9 +730,11 @@ class PassdooApp {
         const searchTerm = document.getElementById('search-input').value.toLowerCase();
         
         let filtered = this.passwords.filter(p => {
-            // Filter by tab
-            if (this.currentTab === 'personal' && p.is_shared) return false;
-            if (this.currentTab === 'shared' && !p.is_shared) return false;
+            // Filter by tab (usando is_owner come nel browser extension)
+            // Mie = password di cui sono owner
+            // Condivise = password condivise con me da altri (non sono owner)
+            if (this.currentTab === 'personal' && !p.is_owner) return false;
+            if (this.currentTab === 'shared' && p.is_owner) return false;
             
             // Filter by client filter
             if (this.clientFilter && p.partner_id !== this.clientFilter.id) return false;
