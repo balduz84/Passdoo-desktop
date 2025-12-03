@@ -11,18 +11,13 @@ class PassdooApp {
         this.currentTab = 'all';
         this.currentPassword = null;
         this.authWindow = null;
-        this.publicIp = null;
-        this.deviceInfo = null;
         
         this.init();
     }
 
-    async init() {
+    init() {
         // Load saved settings
         this.loadSettings();
-        
-        // Get device info and public IP
-        await this.initDeviceInfo();
         
         // Setup event listeners
         this.setupEventListeners();
@@ -31,118 +26,6 @@ class PassdooApp {
         if (this.sessionId) {
             this.validateAndShowMain();
         }
-    }
-
-    /**
-     * Initialize device info and fetch public IP
-     */
-    async initDeviceInfo() {
-        // Get device/OS info from user agent
-        this.deviceInfo = this.getDeviceInfo();
-        
-        // Fetch public IP (non-blocking)
-        this.fetchPublicIp().catch(err => {
-            console.warn('Could not fetch public IP:', err);
-        });
-    }
-
-    /**
-     * Get device information from user agent and system
-     */
-    getDeviceInfo() {
-        const ua = navigator.userAgent;
-        let os = 'Unknown';
-        let osVersion = '';
-        
-        if (ua.includes('Mac OS X')) {
-            os = 'macOS';
-            const match = ua.match(/Mac OS X (\d+[._]\d+[._]?\d*)/);
-            if (match) {
-                osVersion = match[1].replace(/_/g, '.');
-            }
-        } else if (ua.includes('Windows NT')) {
-            os = 'Windows';
-            const match = ua.match(/Windows NT (\d+\.\d+)/);
-            if (match) {
-                const ntVersion = match[1];
-                // Map NT version to Windows version
-                const versionMap = {
-                    '10.0': '10/11',
-                    '6.3': '8.1',
-                    '6.2': '8',
-                    '6.1': '7',
-                    '6.0': 'Vista'
-                };
-                osVersion = versionMap[ntVersion] || ntVersion;
-            }
-        } else if (ua.includes('Linux')) {
-            os = 'Linux';
-        }
-
-        return {
-            os_name: os,
-            os_version: osVersion,
-            app_name: 'Passdoo Desktop',
-            app_version: '1.0.0',
-            user_agent: ua
-        };
-    }
-
-    /**
-     * Fetch public IP address from external service
-     */
-    async fetchPublicIp() {
-        try {
-            // Try multiple services for reliability
-            const services = [
-                'https://api.ipify.org?format=json',
-                'https://api.my-ip.io/v2/ip.json',
-                'https://api64.ipify.org?format=json'
-            ];
-            
-            for (const service of services) {
-                try {
-                    const response = await fetch(service, { 
-                        method: 'GET',
-                        timeout: 5000 
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        this.publicIp = data.ip;
-                        console.log('Public IP detected:', this.publicIp);
-                        return this.publicIp;
-                    }
-                } catch (e) {
-                    continue; // Try next service
-                }
-            }
-        } catch (error) {
-            console.warn('Failed to fetch public IP:', error);
-        }
-        return null;
-    }
-
-    /**
-     * Get headers with device info for API calls
-     */
-    getDeviceHeaders() {
-        const headers = {};
-        
-        if (this.publicIp) {
-            headers['X-Client-IP'] = this.publicIp;
-        }
-        
-        if (this.deviceInfo) {
-            headers['X-Device-Info'] = JSON.stringify({
-                os: this.deviceInfo.os_name,
-                os_version: this.deviceInfo.os_version,
-                app: this.deviceInfo.app_name,
-                app_version: this.deviceInfo.app_version
-            });
-        }
-        
-        return headers;
     }
 
     loadSettings() {
@@ -171,7 +54,6 @@ class PassdooApp {
     getAuthHeaders() {
         const headers = {
             'Content-Type': 'application/json',
-            ...this.getDeviceHeaders()
         };
         if (this.apiToken) {
             headers['Authorization'] = `Bearer ${this.apiToken}`;
@@ -186,11 +68,6 @@ class PassdooApp {
         }
         
         try {
-            // Ensure we have device info before validation
-            if (!this.publicIp) {
-                await this.fetchPublicIp();
-            }
-            
             // Validate token with server
             const response = await fetch(`${this.baseUrl}/passdoo/api/desktop/validate`, {
                 method: 'GET',
@@ -339,29 +216,15 @@ class PassdooApp {
             this.deviceCode = this.generateDeviceCode();
             console.log('Generated device code:', this.deviceCode);
             
-            // Ensure we have the public IP before auth
-            if (!this.publicIp) {
-                await this.fetchPublicIp();
-            }
-            
             // Request a pending token from the server
             const initResponse = await fetch(`${this.baseUrl}/passdoo/api/desktop/init-auth`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...this.getDeviceHeaders()
                 },
                 body: JSON.stringify({
                     device_code: this.deviceCode,
-                    device_name: 'Passdoo Desktop',
-                    device_info: {
-                        os_name: this.deviceInfo?.os_name || 'Unknown',
-                        os_version: this.deviceInfo?.os_version || '',
-                        app_name: 'Passdoo Desktop',
-                        app_version: '1.0.0',
-                        user_agent: navigator.userAgent
-                    },
-                    ip_address: this.publicIp
+                    device_name: 'Passdoo Desktop'
                 })
             });
 
@@ -474,17 +337,9 @@ class PassdooApp {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        ...this.getDeviceHeaders()
                     },
                     body: JSON.stringify({
-                        device_code: this.deviceCode,
-                        ip_address: this.publicIp,
-                        device_info: {
-                            os_name: this.deviceInfo?.os_name || 'Unknown',
-                            os_version: this.deviceInfo?.os_version || '',
-                            app_name: 'Passdoo Desktop',
-                            app_version: '1.0.0'
-                        }
+                        device_code: this.deviceCode
                     })
                 });
                 
@@ -737,21 +592,10 @@ class PassdooApp {
 
         const searchTerm = document.getElementById('search-input').value.toLowerCase();
         
-        // Il server già restituisce solo le password accessibili all'utente,
-        // non serve filtrare nuovamente lato client
-        // (questo era il bug che escludeva alcune password per i manager)
-        
         const filtered = this.passwords.filter(p => {
             // Filter by tab
-            // Personali: create dall'utente (is_owner) E non condivise
-            // Condivise: is_shared = true
-            if (this.currentTab === 'personal') {
-                if (!p.is_owner || p.is_shared) return false;
-            }
-            if (this.currentTab === 'shared') {
-                if (!p.is_shared) return false;
-            }
-            // 'all' tab shows all passwords returned by server
+            if (this.currentTab === 'personal' && p.is_shared) return false;
+            if (this.currentTab === 'shared' && !p.is_shared) return false;
             
             // Filter by search
             if (searchTerm) {
@@ -811,14 +655,22 @@ class PassdooApp {
         }
     }
 
-    createClientSection(clientName, passwords, image) {
+    createClientSection(clientName, passwords, clientImage) {
         const section = document.createElement('div');
         section.className = 'client-section collapsed';
         
-        // Costruisci l'icona del cliente: immagine se disponibile, altrimenti iniziale
+        // Crea l'icona del cliente (immagine, lucchetto per 'Senza cliente', o iniziale)
         let clientIconHtml;
-        if (image) {
-            clientIconHtml = `<img src="data:image/png;base64,${image}" alt="${this.escapeHtml(clientName)}" class="client-icon-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="client-icon" style="display: none;">${clientName.charAt(0).toUpperCase()}</div>`;
+        if (clientName === 'Senza cliente') {
+            // Icona lucchetto per 'Senza cliente'
+            clientIconHtml = `<div class="client-icon client-icon-lock">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+            </div>`;
+        } else if (clientImage) {
+            clientIconHtml = `<img class="client-logo" src="data:image/png;base64,${clientImage}" alt="${this.escapeHtml(clientName)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="client-icon" style="display:none;">${clientName.charAt(0).toUpperCase()}</div>`;
         } else {
             clientIconHtml = `<div class="client-icon">${clientName.charAt(0).toUpperCase()}</div>`;
         }
@@ -860,11 +712,26 @@ class PassdooApp {
 
         const initial = (password.name || 'P').charAt(0).toUpperCase();
         
+        // Crea il link URL se presente
+        let urlHtml = '';
+        if (password.uri) {
+            // Estrai dominio per display più pulito
+            let displayUrl = password.uri;
+            try {
+                const url = new URL(password.uri.startsWith('http') ? password.uri : 'https://' + password.uri);
+                displayUrl = url.hostname + (url.pathname !== '/' ? url.pathname : '');
+            } catch (e) {
+                displayUrl = password.uri;
+            }
+            urlHtml = `<a href="#" class="password-url" onclick="event.stopPropagation(); app.openExternalUrl('${this.escapeHtml(password.uri.startsWith('http') ? password.uri : 'https://' + password.uri)}'); return false;" title="${this.escapeHtml(password.uri)}">${this.escapeHtml(displayUrl)}</a>`;
+        }
+        
         card.innerHTML = `
             <div class="password-icon">${initial}</div>
             <div class="password-info">
                 <div class="password-name">${this.escapeHtml(password.name || 'Senza nome')}</div>
                 <div class="password-username">${this.escapeHtml(password.username || '')}</div>
+                ${urlHtml}
             </div>
             <div class="password-actions">
                 <button class="btn-icon copy-username-btn" title="Copia username" onclick="event.stopPropagation(); app.copyToClipboard('${this.escapeHtml(password.username || '')}', 'Username copiato')">
@@ -958,30 +825,6 @@ class PassdooApp {
         this.currentPassword = null;
     }
 
-    showAboutModal() {
-        document.getElementById('about-modal').style.display = 'flex';
-    }
-
-    hideAboutModal() {
-        document.getElementById('about-modal').style.display = 'none';
-    }
-
-    async openExternalUrl(url) {
-        try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('open_url', { url });
-        } catch (e) {
-            console.error('Error opening URL:', e);
-            // Fallback: copy to clipboard
-            try {
-                await navigator.clipboard.writeText(url);
-                this.showToast('URL copiato negli appunti', 'info');
-            } catch (clipErr) {
-                console.error('Could not copy URL:', clipErr);
-            }
-        }
-    }
-
     showAddPasswordModal() {
         document.getElementById('add-password-form').reset();
         document.getElementById('add-password-modal').style.display = 'flex';
@@ -1067,6 +910,30 @@ class PassdooApp {
             document.execCommand('copy');
             document.body.removeChild(textarea);
             this.showToast(message || 'Copiato', 'success');
+        }
+    }
+
+    showAboutModal() {
+        document.getElementById('about-modal').style.display = 'flex';
+    }
+
+    hideAboutModal() {
+        document.getElementById('about-modal').style.display = 'none';
+    }
+
+    async openExternalUrl(url) {
+        try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('open_url', { url });
+        } catch (e) {
+            console.error('Error opening URL:', e);
+            // Fallback: copy to clipboard
+            try {
+                await navigator.clipboard.writeText(url);
+                this.showToast('URL copiato negli appunti', 'success');
+            } catch (clipErr) {
+                console.error('Error copying URL:', clipErr);
+            }
         }
     }
 

@@ -457,6 +457,24 @@ body {
     flex-shrink: 0;
 }
 
+.client-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.client-icon-lock {
+    background: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.client-icon-lock svg {
+    width: 16px;
+    height: 16px;
+}
+
 .client-icon-img {
     width: 28px;
     height: 28px;
@@ -544,6 +562,22 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.password-url {
+    font-size: 12px;
+    color: var(--primary-color);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    margin-top: 2px;
+}
+
+.password-url:hover {
+    text-decoration: underline;
+    color: var(--primary-dark);
 }
 
 .password-actions {
