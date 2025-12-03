@@ -1,5 +1,8 @@
 // Passdoo Desktop - Main Application
 
+// Versione dell'applicazione
+const APP_VERSION = '1.4.0';
+
 class PassdooApp {
     constructor() {
         this.baseUrl = 'https://portal.novacs.net';
@@ -11,6 +14,7 @@ class PassdooApp {
         this.currentTab = 'all';
         this.currentPassword = null;
         this.authWindow = null;
+        this.version = APP_VERSION;
         
         this.init();
     }
@@ -54,11 +58,86 @@ class PassdooApp {
     getAuthHeaders() {
         const headers = {
             'Content-Type': 'application/json',
+            'X-Client-Type': 'desktop-app',
+            'X-Client-Version': this.version
         };
         if (this.apiToken) {
             headers['Authorization'] = `Bearer ${this.apiToken}`;
         }
         return headers;
+    }
+
+    /**
+     * Gestisce l'errore di versione obsoleta
+     */
+    handleVersionOutdated(data) {
+        const downloadUrl = data?.download_url || '/passdoo/downloads';
+        const currentVersion = data?.current_version || this.version;
+        const minVersion = data?.min_version || 'più recente';
+        
+        // Esegui logout
+        this.sessionId = null;
+        this.apiToken = null;
+        this.saveSettings();
+        
+        // Mostra messaggio di aggiornamento
+        const loginView = document.getElementById('login-view');
+        const mainView = document.getElementById('main-view');
+        
+        if (mainView) mainView.style.display = 'none';
+        if (loginView) loginView.style.display = 'flex';
+        
+        const loginError = document.getElementById('login-error');
+        if (loginError) {
+            loginError.style.color = '#f59e0b';
+            loginError.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <h3 style="margin-bottom: 8px; font-size: 18px;">Aggiornamento Richiesto</h3>
+                    <p style="margin-bottom: 4px;">La versione attuale (${this.escapeHtml(currentVersion)}) non è più supportata.</p>
+                    <p style="margin-bottom: 16px;">È richiesta almeno la versione <strong>${this.escapeHtml(minVersion)}</strong>.</p>
+                    <a href="${this.baseUrl}${downloadUrl}" target="_blank" class="btn-update" style="display: inline-block; padding: 12px 24px; background: #521213; color: white; text-decoration: none; border-radius: 8px; font-weight: 500;">
+                        Scarica Aggiornamento
+                    </a>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Escape HTML per prevenire XSS
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
+     * Helper per chiamate API con gestione automatica versione
+     */
+    async apiFetch(url, options = {}) {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                ...this.getAuthHeaders(),
+                ...(options.headers || {})
+            }
+        });
+        
+        // Controlla errore versione
+        if (response.status === 426) {
+            const errorData = await response.json();
+            this.handleVersionOutdated(errorData);
+            throw new Error('Aggiornamento richiesto');
+        }
+        
+        return response;
     }
 
     async validateAndShowMain() {
@@ -69,9 +148,8 @@ class PassdooApp {
         
         try {
             // Validate token with server
-            const response = await fetch(`${this.baseUrl}/passdoo/api/desktop/validate`, {
-                method: 'GET',
-                headers: this.getAuthHeaders()
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/desktop/validate`, {
+                method: 'GET'
             });
 
             const data = await response.json();
@@ -87,9 +165,11 @@ class PassdooApp {
             }
         } catch (error) {
             console.error('Validation error:', error);
-            // If we can't validate, try to load data anyway
-            this.showMainView();
-            this.loadData();
+            if (error.message !== 'Aggiornamento richiesto') {
+                // If we can't validate, try to load data anyway
+                this.showMainView();
+                this.loadData();
+            }
         }
     }
 
@@ -511,9 +591,8 @@ class PassdooApp {
         container.innerHTML = '';
 
         try {
-            const response = await fetch(`${this.baseUrl}/passdoo/api/extension/passwords`, {
-                method: 'GET',
-                headers: this.getAuthHeaders()
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/passwords`, {
+                method: 'GET'
             });
 
             const data = await response.json();
@@ -526,17 +605,18 @@ class PassdooApp {
             }
         } catch (error) {
             console.error('Error loading passwords:', error);
-            loadingState.style.display = 'none';
-            emptyState.style.display = 'flex';
-            emptyState.querySelector('p').textContent = 'Errore nel caricamento delle password';
+            if (error.message !== 'Aggiornamento richiesto') {
+                loadingState.style.display = 'none';
+                emptyState.style.display = 'flex';
+                emptyState.querySelector('p').textContent = 'Errore nel caricamento delle password';
+            }
         }
     }
 
     async loadClients() {
         try {
-            const response = await fetch(`${this.baseUrl}/passdoo/api/extension/clients`, {
-                method: 'GET',
-                headers: this.getAuthHeaders()
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/clients`, {
+                method: 'GET'
             });
 
             const data = await response.json();
@@ -552,9 +632,8 @@ class PassdooApp {
 
     async loadPasswordPlain(passwordId) {
         try {
-            const response = await fetch(`${this.baseUrl}/passdoo/api/extension/password/${passwordId}`, {
-                method: 'GET',
-                headers: this.getAuthHeaders()
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${passwordId}`, {
+                method: 'GET'
             });
 
             const data = await response.json();
