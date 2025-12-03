@@ -45,10 +45,14 @@
       "minimumSystemVersion": "10.13"
     },
     "windows": {
-      "wix": {
-        "template": "src-tauri/wix/main.wxs"
-      },
-      "nsis": null
+      "wix": null,
+      "nsis": {
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico",
+        "languages": ["Italian", "English"],
+        "headerImage": null,
+        "sidebarImage": null
+      }
     }
   }
 }
