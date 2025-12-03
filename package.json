@@ -1,8 +1,8 @@
 {
   "name": "passdoo-desktop",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Passdoo Password Manager - Desktop Application",
-  "author": "NovaCS",
+  "author": "Silvio Balduzzi - NovaCS S.r.l.",
   "license": "MIT",
   "type": "module",
   "scripts": {
