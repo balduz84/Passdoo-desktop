@@ -854,6 +854,10 @@ body {
     padding: 24px;
 }
 
+#edit-password-form {
+    padding: 24px;
+}
+
 .password-input-group {
     display: flex;
     gap: 8px;
@@ -1089,13 +1093,14 @@ body {
 /* Detail Actions */
 .detail-actions {
     display: flex;
+    justify-content: center;
+    align-items: center;
     gap: 8px;
     margin-top: 20px;
-    padding-top: 16px;
+    padding: 16px 0;
     border-top: 1px solid var(--border-color);
     flex-wrap: wrap;
 }
-
 .detail-actions .btn {
     display: flex;
     align-items: center;

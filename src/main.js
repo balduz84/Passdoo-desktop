@@ -11,6 +11,7 @@ class PassdooApp {
         this.userName = '';
         this.passwords = [];
         this.clients = [];
+        this.categories = [];
         this.currentTab = 'all';
         this.currentPassword = null;
         this.authWindow = null;
@@ -576,6 +577,7 @@ class PassdooApp {
         this.deviceCode = null;
         this.passwords = [];
         this.clients = [];
+        this.categories = [];
         localStorage.removeItem('passdoo_settings');
         
         // Reset login view to initial state
@@ -607,7 +609,8 @@ class PassdooApp {
         try {
             await Promise.all([
                 this.loadPasswords(),
-                this.loadClients()
+                this.loadClients(),
+                this.loadCategoriesData()
             ]);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -681,6 +684,23 @@ class PassdooApp {
             }
         } catch (error) {
             console.error('Error loading clients:', error);
+        }
+    }
+
+
+    async loadCategoriesData() {
+        try {
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/categories`, {
+                method: 'GET'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.categories = data.categories || [];
+            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
         }
     }
 
@@ -1420,10 +1440,84 @@ class PassdooApp {
 
     editCurrentPassword() {
         if (!this.currentPassword) return;
-        // Per ora, mostriamo un toast - in futuro si può implementare un modal di modifica completo
-        this.showToast('Funzione modifica in sviluppo', 'info');
+        this.showEditPasswordModal();
     }
 
+    async showEditPasswordModal() {
+        if (!this.currentPassword) return;
+        
+        const password = this.currentPassword;
+        
+        // Popola i campi con i valori attuali
+        document.getElementById('edit-name').value = password.name || '';
+        document.getElementById('edit-url').value = password.uri || '';
+        document.getElementById('edit-username').value = password.username || '';
+        document.getElementById('edit-password').value = ''; // Non mostriamo la password esistente
+        document.getElementById('edit-notes').value = password.description || '';
+        
+        document.getElementById('edit-password-modal').style.display = 'flex';
+    }
+
+    hideEditPasswordModal() {
+        document.getElementById('edit-password-modal').style.display = 'none';
+    }
+
+    toggleEditPasswordVisibility() {
+        const input = document.getElementById('edit-password');
+        input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    async handleEditPassword() {
+        if (!this.currentPassword) return;
+        
+        const name = document.getElementById('edit-name').value.trim();
+        const url = document.getElementById('edit-url').value.trim();
+        const username = document.getElementById('edit-username').value.trim();
+        const password = document.getElementById('edit-password').value;
+        const notes = document.getElementById('edit-notes').value.trim();
+        
+        if (!name) {
+            this.showToast('Il nome è obbligatorio', 'error');
+            return;
+        }
+        
+        try {
+            const updateData = {
+                name,
+                uri: url,
+                username,
+                description: notes
+            };
+            
+            // Aggiungi la password solo se è stata modificata
+            if (password) {
+                updateData.password = password;
+            }
+            
+            const response = await this.apiFetch(
+                `${this.baseUrl}/passdoo/api/extension/password/${this.currentPassword.id}`,
+                {
+                    method: 'PUT',
+                    body: JSON.stringify(updateData)
+                }
+            );
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                this.showToast(data.error, 'error');
+                return;
+            }
+            
+            this.showToast('Password aggiornata con successo', 'success');
+            this.hideEditPasswordModal();
+            this.hideDetailModal();
+            await this.loadPasswords();
+        } catch (error) {
+            console.error('Error updating password:', error);
+            this.showToast('Errore aggiornamento', 'error');
+        }
+    }
     showChangeCategoryModal() {
         if (!this.currentPassword) return;
         
@@ -1503,32 +1597,43 @@ class PassdooApp {
     }
 
     async saveClient() {
-        if (!this.currentPassword) return;
+        console.log("saveClient called");
+        if (!this.currentPassword) {
+            console.error("No currentPassword");
+            return;
+        }
         
         const clientId = document.getElementById('select-client').value;
+        console.log("Saving client:", clientId, "for password:", this.currentPassword.id);
         
         try {
+            const requestBody = {
+                partner_id: clientId ? parseInt(clientId) : null
+            };
+            console.log("Request body:", JSON.stringify(requestBody));
+            
             const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${this.currentPassword.id}`, {
                 method: 'PUT',
-                body: JSON.stringify({
-                    partner_id: clientId ? parseInt(clientId) : null
-                })
+                body: JSON.stringify(requestBody)
             });
             
+            console.log("Response status:", response.status);
             const data = await response.json();
+            console.log("Response data:", data);
             
             if (data.error) {
                 this.showToast(data.error, 'error');
                 return;
             }
             
+            console.log('About to show toast and close modal');
             this.showToast('Cliente aggiornato', 'success');
             this.hideClientModal();
             this.hideDetailModal();
             await this.loadPasswords();
         } catch (error) {
             console.error('Error updating client:', error);
-            this.showToast('Errore nell\'aggiornamento cliente', 'error');
+            this.showToast('Errore aggiornamento cliente', 'error');
         }
     }
 
