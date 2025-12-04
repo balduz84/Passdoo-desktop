@@ -266,6 +266,36 @@ class PassdooApp {
                 this.handleAuthCallback(event.data);
             }
         });
+
+        // Password management buttons
+        document.getElementById('btn-edit-password')?.addEventListener('click', () => this.editCurrentPassword());
+        document.getElementById('btn-change-category')?.addEventListener('click', () => this.showChangeCategoryModal());
+        document.getElementById('btn-change-client')?.addEventListener('click', () => this.showChangeClientModal());
+        document.getElementById('btn-delete-password')?.addEventListener('click', () => this.showDeleteConfirmModal());
+        
+        // Category modal
+        document.getElementById('close-category-modal')?.addEventListener('click', () => this.hideCategoryModal());
+        document.getElementById('cancel-category-btn')?.addEventListener('click', () => this.hideCategoryModal());
+        document.getElementById('save-category-btn')?.addEventListener('click', () => this.saveCategory());
+        document.getElementById('category-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'category-modal') this.hideCategoryModal();
+        });
+
+        // Client modal  
+        document.getElementById('close-client-modal')?.addEventListener('click', () => this.hideClientModal());
+        document.getElementById('cancel-client-btn')?.addEventListener('click', () => this.hideClientModal());
+        document.getElementById('save-client-btn')?.addEventListener('click', () => this.saveClient());
+        document.getElementById('client-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'client-modal') this.hideClientModal();
+        });
+
+        // Delete modal
+        document.getElementById('close-delete-modal')?.addEventListener('click', () => this.hideDeleteModal());
+        document.getElementById('cancel-delete-btn')?.addEventListener('click', () => this.hideDeleteModal());
+        document.getElementById('confirm-delete-btn')?.addEventListener('click', () => this.deletePassword());
+        document.getElementById('delete-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'delete-modal') this.hideDeleteModal();
+        });
     }
 
     /**
@@ -1124,6 +1154,25 @@ class PassdooApp {
             clientRow.style.display = 'none';
         }
 
+        // Show category
+        const categoryRow = document.getElementById('detail-category-row');
+        const categoryEl = document.getElementById('detail-category');
+        if (categoryRow && categoryEl) {
+            if (password.category) {
+                categoryEl.textContent = password.category;
+                categoryRow.style.display = 'block';
+            } else {
+                categoryRow.style.display = 'none';
+            }
+        }
+
+        // Show/hide action buttons based on permissions
+        const actionsDiv = document.getElementById('detail-actions');
+        if (actionsDiv) {
+            const canEdit = password.can_edit || password.access_level === 'write';
+            actionsDiv.style.display = canEdit ? 'flex' : 'none';
+        }
+
         // Setup copy buttons
         document.querySelectorAll('#detail-modal .copy-btn').forEach(btn => {
             btn.onclick = async () => {
@@ -1297,38 +1346,44 @@ class PassdooApp {
     }
 
     async copyToClipboard(text, message) {
+        console.log('copyToClipboard called with text length:', text ? text.length : 0);
         try {
-            await navigator.clipboard.writeText(text);
+            // Use Tauri clipboard plugin
+            const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+            await writeText(text);
+            console.log('Copied via Tauri clipboard plugin');
             this.showToast(message || 'Copiato', 'success');
         } catch (error) {
-            // Fallback for older browsers
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            this.showToast(message || 'Copiato', 'success');
+            console.error('Tauri clipboard failed:', error);
+            // Fallback to navigator.clipboard
+            try {
+                await navigator.clipboard.writeText(text);
+                console.log('Copied via navigator.clipboard');
+                this.showToast(message || 'Copiato', 'success');
+            } catch (e2) {
+                console.error('All clipboard methods failed');
+                this.showToast('Errore nella copia', 'error');
+            }
         }
     }
 
 
     async copyPassword(passwordId) {
+        console.log('copyPassword called with ID:', passwordId);
         try {
-            // Fetch password from server
-            const response = await this.apiFetch(\`\${this.baseUrl}/passdoo/api/extension/password/\${passwordId}\`, {
-                method: 'GET'
-            });
-            
-            const data = await response.json();
-            
-            if (data.password && data.password.password_plain) {
-                await this.copyToClipboard(data.password.password_plain, 'Password copiata');
+            const password = await this.loadPasswordPlain(passwordId);
+            console.log('Password retrieved:', password ? 'yes (length: ' + password.length + ')' : 'no');
+            if (password) {
+                console.log('About to call copyToClipboard...');
+                console.log('this.copyToClipboard exists:', typeof this.copyToClipboard);
+                const result = await this.copyToClipboard(password, 'Password copiata');
+                console.log('copyToClipboard returned:', result);
             } else {
                 this.showToast('Impossibile recuperare la password', 'error');
             }
         } catch (error) {
-            console.error('Error copying password:', error);
+            console.error('Error in copyPassword:', error);
+            console.error('Error stack:', error.stack);
             this.showToast('Errore nel copiare la password', 'error');
         }
     }
@@ -1340,6 +1395,160 @@ class PassdooApp {
 
     hideAboutModal() {
         document.getElementById('about-modal').style.display = 'none';
+    }
+
+    // ==========================================
+    // Password Management Functions
+    // ==========================================
+
+    editCurrentPassword() {
+        if (!this.currentPassword) return;
+        // Per ora, mostriamo un toast - in futuro si può implementare un modal di modifica completo
+        this.showToast('Funzione modifica in sviluppo', 'info');
+    }
+
+    showChangeCategoryModal() {
+        if (!this.currentPassword) return;
+        
+        // Popola il select con le categorie
+        const select = document.getElementById('select-category');
+        select.innerHTML = '<option value="">-- Seleziona Categoria --</option>';
+        
+        this.categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.name || cat.label;
+            if (this.currentPassword.category_id === cat.id) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        
+        document.getElementById('category-modal').style.display = 'flex';
+    }
+
+    hideCategoryModal() {
+        document.getElementById('category-modal').style.display = 'none';
+    }
+
+    async saveCategory() {
+        if (!this.currentPassword) return;
+        
+        const categoryId = document.getElementById('select-category').value;
+        
+        try {
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${this.currentPassword.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    category_id: categoryId ? parseInt(categoryId) : null
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                this.showToast(data.error, 'error');
+                return;
+            }
+            
+            this.showToast('Categoria aggiornata', 'success');
+            this.hideCategoryModal();
+            this.hideDetailModal();
+            await this.loadPasswords();
+        } catch (error) {
+            console.error('Error updating category:', error);
+            this.showToast('Errore nell\'aggiornamento categoria', 'error');
+        }
+    }
+
+    showChangeClientModal() {
+        if (!this.currentPassword) return;
+        
+        // Popola il select con i clienti
+        const select = document.getElementById('select-client');
+        select.innerHTML = '<option value="">Nessun Cliente</option>';
+        
+        this.clients.forEach(client => {
+            const option = document.createElement('option');
+            option.value = client.id;
+            option.textContent = client.name;
+            if (this.currentPassword.partner_id === client.id) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        
+        document.getElementById('client-modal').style.display = 'flex';
+    }
+
+    hideClientModal() {
+        document.getElementById('client-modal').style.display = 'none';
+    }
+
+    async saveClient() {
+        if (!this.currentPassword) return;
+        
+        const clientId = document.getElementById('select-client').value;
+        
+        try {
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${this.currentPassword.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    partner_id: clientId ? parseInt(clientId) : null
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                this.showToast(data.error, 'error');
+                return;
+            }
+            
+            this.showToast('Cliente aggiornato', 'success');
+            this.hideClientModal();
+            this.hideDetailModal();
+            await this.loadPasswords();
+        } catch (error) {
+            console.error('Error updating client:', error);
+            this.showToast('Errore nell\'aggiornamento cliente', 'error');
+        }
+    }
+
+    showDeleteConfirmModal() {
+        if (!this.currentPassword) return;
+        
+        document.getElementById('delete-password-name').textContent = this.currentPassword.name || 'Senza nome';
+        document.getElementById('delete-modal').style.display = 'flex';
+    }
+
+    hideDeleteModal() {
+        document.getElementById('delete-modal').style.display = 'none';
+    }
+
+    async deletePassword() {
+        if (!this.currentPassword) return;
+        
+        try {
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${this.currentPassword.id}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                this.showToast(data.error, 'error');
+                return;
+            }
+            
+            this.showToast('Password eliminata', 'success');
+            this.hideDeleteModal();
+            this.hideDetailModal();
+            await this.loadPasswords();
+        } catch (error) {
+            console.error('Error deleting password:', error);
+            this.showToast('Errore nell\'eliminazione', 'error');
+        }
     }
 
     async openExternalUrl(url) {
