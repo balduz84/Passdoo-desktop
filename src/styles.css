@@ -257,6 +257,15 @@ body {
     color: var(--text-primary);
 }
 
+.btn-icon.spinning svg {
+    animation: spin 0.8s linear infinite;
+}
+
+.btn-icon:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .error-message {
     color: var(--error-color);
     font-size: 14px;

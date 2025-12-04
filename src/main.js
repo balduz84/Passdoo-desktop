@@ -1038,7 +1038,13 @@ class PassdooApp {
     createPasswordCard(password) {
         const card = document.createElement('div');
         card.className = 'password-card';
-        card.onclick = () => this.showPasswordDetail(password);
+        card.addEventListener('click', (e) => {
+            // Non aprire il dettaglio se il click è su un bottone o link
+            if (e.target.closest('.btn-icon') || e.target.closest('.password-url')) {
+                return;
+            }
+            this.showPasswordDetail(password);
+        });
 
         // Use category icon instead of initial
         const categoryIcon = getCategoryIcon(password.category || 'other');

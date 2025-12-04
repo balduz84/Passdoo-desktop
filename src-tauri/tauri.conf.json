@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Passdoo",
-  "version": "1.4.0",
+  "version": "1.6.0",
   "identifier": "net.novacs.passdoo",
   "build": {
     "frontendDist": "../dist",
