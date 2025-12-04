@@ -1166,11 +1166,28 @@ class PassdooApp {
             }
         }
 
-        // Show/hide action buttons based on permissions
+        // Show/hide action buttons based on per-password permissions
+        const btnEdit = document.getElementById('btn-edit-password');
+        const btnCategory = document.getElementById('btn-change-category');
+        const btnClient = document.getElementById('btn-change-client');
+        const btnDelete = document.getElementById('btn-delete-password');
+        
+        // can_edit: permette modifica, cambio categoria, cambio cliente
+        const canEdit = password.can_edit || password.access_level === 'write';
+        // can_delete: solo owner o admin possono eliminare
+        const canDelete = password.can_delete === true;
+        
+        // Mostra/nascondi singoli pulsanti in base ai permessi specifici
+        if (btnEdit) btnEdit.style.display = canEdit ? 'inline-flex' : 'none';
+        if (btnCategory) btnCategory.style.display = canEdit ? 'inline-flex' : 'none';
+        if (btnClient) btnClient.style.display = canEdit ? 'inline-flex' : 'none';
+        if (btnDelete) btnDelete.style.display = canDelete ? 'inline-flex' : 'none';
+        
+        // Il div azioni è visibile se almeno un pulsante è visibile
         const actionsDiv = document.getElementById('detail-actions');
         if (actionsDiv) {
-            const canEdit = password.can_edit || password.access_level === 'write';
-            actionsDiv.style.display = canEdit ? 'flex' : 'none';
+            const hasAnyAction = canEdit || canDelete;
+            actionsDiv.style.display = hasAnyAction ? 'flex' : 'none';
         }
 
         // Setup copy buttons
