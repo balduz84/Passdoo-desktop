@@ -1170,3 +1170,127 @@ body {
 .btn-danger:hover {
     background: #c0392b;
 }
+
+/* =====================
+   SELECTION MODE STYLES
+   ===================== */
+
+/* Selection mode button */
+#select-mode-btn {
+    margin-left: 8px;
+}
+
+#select-mode-btn.active {
+    background-color: #521213;
+    color: white;
+}
+
+/* Bulk actions bar */
+.bulk-actions-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #521213 0%, #7a1a1b 100%);
+    color: white;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.bulk-selection-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+}
+
+#bulk-selected-count {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.bulk-actions-bar .btn-link {
+    color: rgba(255, 255, 255, 0.9);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    text-decoration: underline;
+    padding: 4px 8px;
+}
+
+.bulk-actions-bar .btn-link:hover {
+    color: white;
+}
+
+.bulk-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.bulk-actions .btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.bulk-actions .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.bulk-actions .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bulk-actions .btn-ghost {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: white;
+}
+
+.bulk-actions .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Selection checkbox in password card */
+.selection-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+}
+
+.selection-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #521213;
+}
+
+.selection-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+/* Selected password card */
+.password-card.selected {
+    background: linear-gradient(135deg, rgba(82, 18, 19, 0.1) 0%, rgba(122, 26, 27, 0.05) 100%);
+    border: 2px solid #521213;
+}
+
+/* Modal info text */
+.modal-info {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 3px solid #521213;
+}
+
+.modal-info strong {
+    color: #521213;
+    font-weight: 600;
+}

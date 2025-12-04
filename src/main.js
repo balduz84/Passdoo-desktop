@@ -1,7 +1,7 @@
 // Passdoo Desktop - Main Application
 
 // Versione dell'applicazione
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 
 class PassdooApp {
     constructor() {
@@ -17,6 +17,8 @@ class PassdooApp {
         this.authWindow = null;
         this.version = APP_VERSION;
         this.clientFilter = null;  // { id, name } - Filtro per cliente
+        this.selectionMode = false;  // Modalità selezione multipla
+        this.selectedPasswords = new Set();  // Set di password ID selezionate
         
         this.init();
     }
@@ -1087,12 +1089,21 @@ class PassdooApp {
 
     createPasswordCard(password) {
         const card = document.createElement('div');
-        card.className = 'password-card';
+        card.className = 'password-card' + (this.selectionMode && this.selectedPasswords.has(password.id) ? ' selected' : '');
+        card.dataset.passwordId = password.id;
+        
         card.addEventListener('click', (e) => {
-            // Non aprire il dettaglio se il click è su un bottone o link
-            if (e.target.closest('.btn-icon') || e.target.closest('.password-url')) {
+            // Non aprire il dettaglio se il click è su un bottone, link o checkbox
+            if (e.target.closest('.btn-icon') || e.target.closest('.password-url') || e.target.closest('.selection-checkbox')) {
                 return;
             }
+            
+            // In selection mode, toggle selection
+            if (this.selectionMode) {
+                this.togglePasswordSelection(password.id);
+                return;
+            }
+            
             this.showPasswordDetail(password);
         });
 
@@ -1113,7 +1124,18 @@ class PassdooApp {
             urlHtml = `<a href="#" class="password-url" onclick="event.stopPropagation(); app.openExternalUrl('${this.escapeHtml(password.uri.startsWith('http') ? password.uri : 'https://' + password.uri)}'); return false;" title="${this.escapeHtml(password.uri)}">${this.escapeHtml(displayUrl)}</a>`;
         }
         
+        // Checkbox per selection mode (solo se can_edit)
+        const checkboxHtml = this.selectionMode ? `
+            <div class="selection-checkbox-wrapper">
+                <input type="checkbox" class="selection-checkbox" 
+                       ${this.selectedPasswords.has(password.id) ? 'checked' : ''} 
+                       ${password.can_edit ? '' : 'disabled title="Non hai permessi di modifica"'}
+                       onclick="event.stopPropagation(); app.togglePasswordSelection(${password.id})">
+            </div>
+        ` : '';
+        
         card.innerHTML = `
+            ${checkboxHtml}
             <div class="password-icon category-icon-card">${categoryIcon}</div>
             <div class="password-info">
                 <div class="password-name">${this.escapeHtml(password.name || 'Senza nome')}</div>
@@ -1703,6 +1725,298 @@ class PassdooApp {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // =====================
+    // SELEZIONE MULTIPLA
+    // =====================
+    
+    toggleSelectionMode() {
+        this.selectionMode = !this.selectionMode;
+        this.selectedPasswords.clear();
+        this.updateSelectionUI();
+        this.renderPasswords();
+    }
+    
+    exitSelectionMode() {
+        this.selectionMode = false;
+        this.selectedPasswords.clear();
+        this.updateSelectionUI();
+        this.renderPasswords();
+    }
+    
+    updateSelectionUI() {
+        const selectBtn = document.getElementById('select-mode-btn');
+        const bulkBar = document.getElementById('bulk-actions-bar');
+        const tabs = document.querySelector('.tabs');
+        
+        if (this.selectionMode) {
+            selectBtn.classList.add('active');
+            selectBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+                Annulla
+            `;
+            bulkBar.style.display = 'flex';
+            if (tabs) tabs.style.display = 'none';
+        } else {
+            selectBtn.classList.remove('active');
+            selectBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM17.99 9l-1.41-1.42-6.59 6.59-2.58-2.57-1.42 1.41 4 3.99z"/>
+                </svg>
+                Seleziona
+            `;
+            bulkBar.style.display = 'none';
+            if (tabs) tabs.style.display = 'flex';
+        }
+        
+        this.updateBulkSelectedCount();
+    }
+    
+    updateBulkSelectedCount() {
+        const countEl = document.getElementById('bulk-selected-count');
+        if (countEl) {
+            countEl.textContent = this.selectedPasswords.size;
+        }
+        
+        // Disabilita pulsanti se nessuna selezione
+        const categoryBtn = document.getElementById('bulk-category-btn');
+        const clientBtn = document.getElementById('bulk-client-btn');
+        
+        if (categoryBtn) categoryBtn.disabled = this.selectedPasswords.size === 0;
+        if (clientBtn) clientBtn.disabled = this.selectedPasswords.size === 0;
+    }
+    
+    togglePasswordSelection(passwordId) {
+        if (this.selectedPasswords.has(passwordId)) {
+            this.selectedPasswords.delete(passwordId);
+        } else {
+            // Controlla permessi - può selezionare solo se can_edit
+            const password = this.passwords.find(p => p.id === passwordId);
+            if (password && password.can_edit) {
+                this.selectedPasswords.add(passwordId);
+            } else {
+                this.showToast('Non hai i permessi per modificare questa password', 'error');
+                return;
+            }
+        }
+        this.updateBulkSelectedCount();
+        this.updatePasswordCardSelection(passwordId);
+    }
+    
+    updatePasswordCardSelection(passwordId) {
+        const card = document.querySelector(`.password-card[data-password-id="${passwordId}"]`);
+        if (card) {
+            const checkbox = card.querySelector('.selection-checkbox');
+            if (checkbox) {
+                checkbox.checked = this.selectedPasswords.has(passwordId);
+            }
+            card.classList.toggle('selected', this.selectedPasswords.has(passwordId));
+        }
+    }
+    
+    selectAllVisible() {
+        const container = document.getElementById('passwords-container');
+        const cards = container.querySelectorAll('.password-card[data-password-id]');
+        let selected = 0;
+        let skipped = 0;
+        
+        cards.forEach(card => {
+            const passwordId = parseInt(card.dataset.passwordId);
+            const password = this.passwords.find(p => p.id === passwordId);
+            if (password && password.can_edit) {
+                this.selectedPasswords.add(passwordId);
+                card.classList.add('selected');
+                const checkbox = card.querySelector('.selection-checkbox');
+                if (checkbox) checkbox.checked = true;
+                selected++;
+            } else {
+                skipped++;
+            }
+        });
+        
+        this.updateBulkSelectedCount();
+        
+        if (skipped > 0) {
+            this.showToast(`Selezionate ${selected} password (${skipped} escluse per permessi)`, 'info');
+        }
+    }
+    
+    deselectAll() {
+        this.selectedPasswords.clear();
+        
+        const cards = document.querySelectorAll('.password-card.selected');
+        cards.forEach(card => {
+            card.classList.remove('selected');
+            const checkbox = card.querySelector('.selection-checkbox');
+            if (checkbox) checkbox.checked = false;
+        });
+        
+        this.updateBulkSelectedCount();
+    }
+    
+    // =====================
+    // BULK CATEGORY
+    // =====================
+    
+    showBulkCategoryModal() {
+        if (this.selectedPasswords.size === 0) {
+            this.showToast('Seleziona almeno una password', 'warning');
+            return;
+        }
+        
+        // Popola select categorie
+        const select = document.getElementById('bulk-select-category');
+        select.innerHTML = '<option value="">-- Seleziona --</option>';
+        
+        const categoryOptions = [
+            { value: 'web', label: 'Siti Web' },
+            { value: 'server', label: 'Server' },
+            { value: 'database', label: 'Database' },
+            { value: 'email', label: 'Email' },
+            { value: 'vpn', label: 'VPN' },
+            { value: 'wifi', label: 'WiFi' },
+            { value: 'api', label: 'API' },
+            { value: 'certificate', label: 'Certificati' },
+            { value: 'ssh', label: 'SSH' },
+            { value: 'ftp', label: 'FTP' },
+            { value: 'other', label: 'Altro' }
+        ];
+        
+        categoryOptions.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            select.appendChild(option);
+        });
+        
+        // Aggiorna info
+        document.getElementById('bulk-category-info').innerHTML = 
+            `Stai per cambiare la categoria di <strong>${this.selectedPasswords.size}</strong> password.`;
+        
+        document.getElementById('bulk-category-modal').style.display = 'flex';
+    }
+    
+    closeBulkCategoryModal() {
+        document.getElementById('bulk-category-modal').style.display = 'none';
+    }
+    
+    async saveBulkCategory() {
+        const category = document.getElementById('bulk-select-category').value;
+        if (!category) {
+            this.showToast('Seleziona una categoria', 'warning');
+            return;
+        }
+        
+        const passwordIds = Array.from(this.selectedPasswords);
+        let success = 0;
+        let errors = 0;
+        
+        for (const id of passwordIds) {
+            try {
+                const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/passwords/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ category })
+                });
+                
+                if (response.ok) {
+                    success++;
+                    // Aggiorna localmente
+                    const pwd = this.passwords.find(p => p.id === id);
+                    if (pwd) pwd.category = category;
+                } else {
+                    errors++;
+                }
+            } catch (e) {
+                errors++;
+            }
+        }
+        
+        this.closeBulkCategoryModal();
+        this.exitSelectionMode();
+        this.renderPasswords();
+        
+        if (errors === 0) {
+            this.showToast(`Categoria aggiornata per ${success} password`, 'success');
+        } else {
+            this.showToast(`Aggiornate ${success} password, ${errors} errori`, 'warning');
+        }
+    }
+    
+    // =====================
+    // BULK CLIENT
+    // =====================
+    
+    showBulkClientModal() {
+        if (this.selectedPasswords.size === 0) {
+            this.showToast('Seleziona almeno una password', 'warning');
+            return;
+        }
+        
+        // Popola select clienti
+        const select = document.getElementById('bulk-select-client');
+        select.innerHTML = '<option value="">-- Nessun Cliente --</option>';
+        
+        this.clients.forEach(client => {
+            const option = document.createElement('option');
+            option.value = client.id;
+            option.textContent = client.name;
+            select.appendChild(option);
+        });
+        
+        // Aggiorna info
+        document.getElementById('bulk-client-info').innerHTML = 
+            `Stai per assegnare un cliente a <strong>${this.selectedPasswords.size}</strong> password.`;
+        
+        document.getElementById('bulk-client-modal').style.display = 'flex';
+    }
+    
+    closeBulkClientModal() {
+        document.getElementById('bulk-client-modal').style.display = 'none';
+    }
+    
+    async saveBulkClient() {
+        const clientId = document.getElementById('bulk-select-client').value;
+        const partnerId = clientId ? parseInt(clientId) : null;
+        
+        const passwordIds = Array.from(this.selectedPasswords);
+        let success = 0;
+        let errors = 0;
+        
+        for (const id of passwordIds) {
+            try {
+                const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/passwords/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ partner_id: partnerId })
+                });
+                
+                if (response.ok) {
+                    success++;
+                    // Aggiorna localmente
+                    const pwd = this.passwords.find(p => p.id === id);
+                    if (pwd) {
+                        pwd.partner_id = partnerId;
+                        pwd.partner_name = partnerId ? this.clients.find(c => c.id === partnerId)?.name : null;
+                    }
+                } else {
+                    errors++;
+                }
+            } catch (e) {
+                errors++;
+            }
+        }
+        
+        this.closeBulkClientModal();
+        this.exitSelectionMode();
+        this.renderPasswords();
+        
+        if (errors === 0) {
+            this.showToast(`Cliente assegnato a ${success} password`, 'success');
+        } else {
+            this.showToast(`Aggiornate ${success} password, ${errors} errori`, 'warning');
+        }
     }
 }
 
