@@ -178,6 +178,14 @@ class PassdooApp {
     }
 
     setupEventListeners() {
+        // Selection mode toggle
+        document.getElementById('select-mode-btn')?.addEventListener('click', () => this.toggleSelectionMode());
+        document.getElementById('bulk-cancel-btn')?.addEventListener('click', () => this.exitSelectionMode());
+        document.getElementById('bulk-select-all')?.addEventListener('click', () => this.selectAllVisible());
+        document.getElementById('bulk-deselect-all')?.addEventListener('click', () => this.deselectAll());
+        document.getElementById('bulk-category-btn')?.addEventListener('click', () => this.showBulkCategoryModal());
+        document.getElementById('bulk-client-btn')?.addEventListener('click', () => this.showBulkClientModal());
+        
         // Login button - Entra ID OAuth
         document.getElementById('btn-login').addEventListener('click', () => this.handleEntraLogin());
 
@@ -275,6 +283,7 @@ class PassdooApp {
         document.getElementById('btn-change-category')?.addEventListener('click', () => this.showChangeCategoryModal());
         document.getElementById('btn-change-client')?.addEventListener('click', () => this.showChangeClientModal());
         document.getElementById('btn-delete-password')?.addEventListener('click', () => this.showDeleteConfirmModal());
+        document.getElementById('btn-permissions')?.addEventListener('click', () => this.showPermissionsModal());
         
         // Category modal
         document.getElementById('close-category-modal')?.addEventListener('click', () => this.hideCategoryModal());
@@ -299,6 +308,13 @@ class PassdooApp {
         document.getElementById('delete-modal')?.addEventListener('click', (e) => {
             if (e.target.id === 'delete-modal') this.hideDeleteModal();
         });
+        
+        // Permissions modal
+        document.getElementById('close-permissions-modal')?.addEventListener('click', () => this.hidePermissionsModal());
+        document.getElementById('permissions-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'permissions-modal') this.hidePermissionsModal();
+        });
+        document.getElementById('add-access-btn')?.addEventListener('click', () => this.addAccessToPassword());
     }
 
     /**
@@ -397,7 +413,8 @@ class PassdooApp {
                     openBrowserBtn.innerHTML = '✓ Browser Aperto!';
                     openBrowserBtn.style.background = '#10b981';
                     console.log('Browser opened successfully');
-                } catch (e) {
+                console.error("Error for", id, ":", e);
+            } catch (e) {
                     console.error('Error opening browser:', e);
                     // Fallback: copy URL to clipboard
                     try {
@@ -520,6 +537,7 @@ class PassdooApp {
                     // Window was closed, start polling for token
                     this.startTokenPolling();
                 }
+            console.error("Error for", id, ":", e);
             } catch (e) {
                 // Cross-origin error, window still open on external page
             }
@@ -602,8 +620,6 @@ class PassdooApp {
     showMainView() {
         document.getElementById('login-view').style.display = 'none';
         document.getElementById('main-view').style.display = 'flex';
-        document.getElementById('main-view').style.flexDirection = 'column';
-        document.getElementById('main-view').style.height = '100vh';
         document.getElementById('user-email').textContent = this.userName || this.userEmail;
     }
 
@@ -858,6 +874,7 @@ class PassdooApp {
             const section = this.createNoClientSection(grouped.noClientPasswords);
             container.appendChild(section);
         }
+        
     }
 
     /**
@@ -1118,6 +1135,7 @@ class PassdooApp {
             try {
                 const url = new URL(password.uri.startsWith('http') ? password.uri : 'https://' + password.uri);
                 displayUrl = url.hostname + (url.pathname !== '/' ? url.pathname : '');
+            console.error("Error for", id, ":", e);
             } catch (e) {
                 displayUrl = password.uri;
             }
@@ -1169,7 +1187,17 @@ class PassdooApp {
         this.currentPassword = password;
         
         document.getElementById('detail-name').textContent = password.name || 'Senza nome';
-        document.getElementById('detail-url').textContent = password.uri || '-';
+        const urlEl = document.getElementById('detail-url');
+        if (password.uri && password.uri !== '-') {
+            const fullUrl = password.uri.startsWith('http') ? password.uri : 'https://' + password.uri;
+            urlEl.innerHTML = '<a href="#" class="detail-url-link" style="color: var(--primary-color); text-decoration: none;">' + this.escapeHtml(password.uri) + '</a>';
+            urlEl.querySelector('a').onclick = (e) => {
+                e.preventDefault();
+                this.openExternalUrl(fullUrl);
+            };
+        } else {
+            urlEl.textContent = '-';
+        }
         document.getElementById('detail-username').textContent = password.username || '-';
         
         const passwordEl = document.getElementById('detail-password');
@@ -1261,10 +1289,25 @@ class PassdooApp {
                 passwordEl.textContent = '••••••••';
                 passwordEl.classList.add('password-masked');
                 passwordEl.dataset.visible = 'false';
+                // Clear any existing timer
+                if (this.passwordHideTimer) {
+                    clearTimeout(this.passwordHideTimer);
+                    this.passwordHideTimer = null;
+                }
             } else {
                 passwordEl.textContent = passwordEl.dataset.password;
                 passwordEl.classList.remove('password-masked');
                 passwordEl.dataset.visible = 'true';
+                // Auto-hide after 5 seconds
+                if (this.passwordHideTimer) {
+                    clearTimeout(this.passwordHideTimer);
+                }
+                this.passwordHideTimer = setTimeout(() => {
+                    passwordEl.textContent = '••••••••';
+                    passwordEl.classList.add('password-masked');
+                    passwordEl.dataset.visible = 'false';
+                    this.passwordHideTimer = null;
+                }, 5000);
             }
         };
 
@@ -1699,7 +1742,8 @@ class PassdooApp {
         try {
             const { invoke } = await import('@tauri-apps/api/core');
             await invoke('open_url', { url });
-        } catch (e) {
+        console.error("Error for", id, ":", e);
+            } catch (e) {
             console.error('Error opening URL:', e);
             // Fallback: copy to clipboard
             try {
@@ -1748,7 +1792,7 @@ class PassdooApp {
     updateSelectionUI() {
         const selectBtn = document.getElementById('select-mode-btn');
         const bulkBar = document.getElementById('bulk-actions-bar');
-        const tabs = document.querySelector('.tabs');
+        const tabsRow = document.querySelector('.tabs-row');
         
         if (this.selectionMode) {
             selectBtn.classList.add('active');
@@ -1759,7 +1803,7 @@ class PassdooApp {
                 Annulla
             `;
             bulkBar.style.display = 'flex';
-            if (tabs) tabs.style.display = 'none';
+            if (tabsRow) tabsRow.style.display = 'none';
         } else {
             selectBtn.classList.remove('active');
             selectBtn.innerHTML = `
@@ -1769,7 +1813,7 @@ class PassdooApp {
                 Seleziona
             `;
             bulkBar.style.display = 'none';
-            if (tabs) tabs.style.display = 'flex';
+            if (tabsRow) tabsRow.style.display = 'flex';
         }
         
         this.updateBulkSelectedCount();
@@ -1911,16 +1955,18 @@ class PassdooApp {
         }
         
         const passwordIds = Array.from(this.selectedPasswords);
+        console.log("passwordIds:", passwordIds, "clientId:", clientId, "partnerId:", partnerId);
         let success = 0;
         let errors = 0;
         
         for (const id of passwordIds) {
             try {
-                const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/passwords/${id}`, {
+                const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${id}`, {
                     method: 'PUT',
                     body: JSON.stringify({ category })
                 });
                 
+                console.log("Response for", id, ":", response.ok, response.status);
                 if (response.ok) {
                     success++;
                     // Aggiorna localmente
@@ -1929,6 +1975,7 @@ class PassdooApp {
                 } else {
                     errors++;
                 }
+            console.error("Error for", id, ":", e);
             } catch (e) {
                 errors++;
             }
@@ -1978,20 +2025,23 @@ class PassdooApp {
     }
     
     async saveBulkClient() {
+        console.log("saveBulkClient called");
         const clientId = document.getElementById('bulk-select-client').value;
         const partnerId = clientId ? parseInt(clientId) : null;
         
         const passwordIds = Array.from(this.selectedPasswords);
+        console.log("passwordIds:", passwordIds, "clientId:", clientId, "partnerId:", partnerId);
         let success = 0;
         let errors = 0;
         
         for (const id of passwordIds) {
             try {
-                const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/passwords/${id}`, {
+                const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${id}`, {
                     method: 'PUT',
                     body: JSON.stringify({ partner_id: partnerId })
                 });
                 
+                console.log("Response for", id, ":", response.ok, response.status);
                 if (response.ok) {
                     success++;
                     // Aggiorna localmente
@@ -2003,6 +2053,7 @@ class PassdooApp {
                 } else {
                     errors++;
                 }
+            console.error("Error for", id, ":", e);
             } catch (e) {
                 errors++;
             }
@@ -2018,6 +2069,337 @@ class PassdooApp {
             this.showToast(`Aggiornate ${success} password, ${errors} errori`, 'warning');
         }
     }
+    
+    // =====================
+    // PERMISSIONS MANAGEMENT
+    // =====================
+    
+    async showPermissionsModal(passwordId = null) {
+        const id = passwordId || (this.currentPassword ? this.currentPassword.id : null);
+        if (!id) {
+            this.showToast('Nessuna password selezionata', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${id}/access`);
+            const data = await response.json();
+            
+            if (!data.has_access) {
+                this.showToast(data.error || 'Errore nel caricamento permessi', 'error');
+                return;
+            }
+            
+            // Salva dati permessi per riferimento
+            this.currentPermissions = data;
+            this.currentPermissionsPasswordId = id;
+            
+            // Popola il modal
+            this.renderPermissionsModal(data);
+            
+            document.getElementById('permissions-modal').style.display = 'flex';
+        } catch (error) {
+            console.error('Error loading permissions:', error);
+            this.showToast('Errore nel caricamento dei permessi', 'error');
+        }
+    }
+    
+    renderPermissionsModal(data) {
+        const password = this.passwords.find(p => p.id === this.currentPermissionsPasswordId);
+        const passwordName = password ? password.name : 'Password';
+        
+        // Titolo con nome password
+        document.getElementById('permissions-modal-title').textContent = `Permessi: ${passwordName}`;
+        
+        // Cliente (se presente)
+        const clientSection = document.getElementById('permissions-client-section');
+        const clientNameEl = document.getElementById('permissions-client-name');
+        if (password && password.partner_name) {
+            clientSection.style.display = 'block';
+            if (clientNameEl) clientNameEl.textContent = password.partner_name;
+        } else {
+            clientSection.style.display = 'none';
+        }
+        
+        // Admin Group (Passdoo / Amministratore - globale)
+        const adminSection = document.getElementById('permissions-admin-section');
+        if (data.admin_group) {
+            adminSection.style.display = 'block';
+            document.getElementById('admin-group-name').textContent = data.admin_group.name;
+            
+            // Utenti del gruppo admin
+            const adminUsers = document.getElementById('admin-group-users');
+            adminUsers.innerHTML = '';
+            if (data.admin_group.users && data.admin_group.users.length > 0) {
+                data.admin_group.users.forEach(user => {
+                    const initials = this.getInitials(user.name);
+                    const avatarColor = this.getAvatarColor(user.name);
+                    adminUsers.innerHTML += `
+                        <span class="permission-user">
+                            <span class="permission-user-avatar" style="background: ${avatarColor}">${this.escapeHtml(initials)}</span>
+                            ${this.escapeHtml(user.name)}
+                        </span>
+                    `;
+                });
+            } else {
+                adminUsers.innerHTML = '<span class="permission-user">Nessun utente</span>';
+            }
+        } else {
+            adminSection.style.display = 'none';
+        }
+        
+        // Owner Group (Gruppo proprietario del cliente)
+        const ownerSection = document.getElementById('permissions-owner-section');
+        if (data.owner_group) {
+            ownerSection.style.display = 'block';
+            document.getElementById('owner-group-name').textContent = data.owner_group.display_name || data.owner_group.name;
+            
+            // Utenti del gruppo owner
+            const ownerUsers = document.getElementById('owner-group-users');
+            ownerUsers.innerHTML = '';
+            if (data.owner_group.users && data.owner_group.users.length > 0) {
+                data.owner_group.users.forEach(user => {
+                    const initials = this.getInitials(user.name);
+                    const avatarColor = this.getAvatarColor(user.name);
+                    ownerUsers.innerHTML += `
+                        <span class="permission-user">
+                            <span class="permission-user-avatar" style="background: ${avatarColor}">${this.escapeHtml(initials)}</span>
+                            ${this.escapeHtml(user.name)}
+                        </span>
+                    `;
+                });
+            } else {
+                ownerUsers.innerHTML = '<span class="permission-user">Nessun utente</span>';
+            }
+        } else {
+            ownerSection.style.display = 'none';
+        }
+        
+        // Lista accessi esistenti
+        const accessList = document.getElementById('permissions-access-list');
+        accessList.innerHTML = '';
+        
+        if (data.access_list && data.access_list.length > 0) {
+            data.access_list.forEach(access => {
+                const badgeClass = access.access_level === 'write' ? 'badge-write' : 'badge-read';
+                const badgeLabel = access.access_level === 'write' ? 'Lettura/Scrittura' : 'Solo Lettura';
+                
+                let usersHtml = '';
+                if (access.users && access.users.length > 0) {
+                    usersHtml = access.users.map(user => {
+                        const initials = this.getInitials(user.name);
+                        return `
+                            <span class="permission-user">
+                                <span class="permission-user-avatar">${this.escapeHtml(initials)}</span>
+                                ${this.escapeHtml(user.name)}
+                            </span>
+                        `;
+                    }).join('');
+                } else {
+                    usersHtml = '<span class="permission-user">Nessun utente</span>';
+                }
+                
+                // Sezione azioni (solo se può gestire)
+                let actionsHtml = '';
+                if (data.can_manage_access) {
+                    actionsHtml = `
+                        <div class="permission-group-actions">
+                            <select onchange="app.updateAccessLevel(${access.id}, this.value)">
+                                <option value="read" ${access.access_level === 'read' ? 'selected' : ''}>Solo Lettura</option>
+                                ${data.max_assignable_level === 'write' ? `<option value="write" ${access.access_level === 'write' ? 'selected' : ''}>Lettura/Scrittura</option>` : ''}
+                            </select>
+                            <button class="btn-remove" onclick="app.removeAccess(${access.id})" title="Rimuovi accesso">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                accessList.innerHTML += `
+                    <div class="permission-group" data-access-id="${access.id}">
+                        <div class="permission-group-header">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            <span>${this.escapeHtml(access.group_name)}</span>
+                            <span class="permission-badge ${badgeClass}">${badgeLabel}</span>
+                        </div>
+                        <div class="permission-users">${usersHtml}</div>
+                        ${actionsHtml}
+                    </div>
+                `;
+            });
+        } else {
+            accessList.innerHTML = '<p style="color: #666; text-align: center; padding: 16px;">Nessun altro gruppo ha accesso a questa password.</p>';
+        }
+        
+        // Sezione aggiungi accesso (solo se può gestire)
+        const addSection = document.getElementById('permissions-add-section');
+        if (data.can_manage_access && data.available_groups && data.available_groups.length > 0) {
+            addSection.style.display = 'block';
+            
+            // Popola select gruppi
+            const groupSelect = document.getElementById('add-access-group');
+            groupSelect.innerHTML = '<option value="">-- Seleziona Gruppo --</option>';
+            data.available_groups.forEach(group => {
+                groupSelect.innerHTML += `<option value="${group.id}">${this.escapeHtml(group.name)}</option>`;
+            });
+            
+            // Popola select livelli
+            const levelSelect = document.getElementById('add-access-level');
+            levelSelect.innerHTML = '<option value="read">Solo Lettura</option>';
+            if (data.max_assignable_level === 'write') {
+                levelSelect.innerHTML += '<option value="write">Lettura/Scrittura</option>';
+            }
+        } else {
+            addSection.style.display = 'none';
+        }
+    }
+    
+    getInitials(name) {
+        if (!name) return '?';
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    }
+    
+    getAvatarColor(name) {
+        // Colori simili a quelli usati da Odoo
+        const colors = [
+            '#e74c3c', // rosso
+            '#9b59b6', // viola
+            '#3498db', // blu
+            '#1abc9c', // teal
+            '#2ecc71', // verde
+            '#f39c12', // arancione
+            '#e67e22', // arancione scuro
+            '#16a085', // verde acqua
+            '#8e44ad', // viola scuro
+            '#2980b9', // blu scuro
+            '#c0392b', // rosso scuro
+            '#27ae60', // verde scuro
+        ];
+        
+        if (!name) return colors[0];
+        
+        // Genera un hash dal nome per avere sempre lo stesso colore
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        return colors[Math.abs(hash) % colors.length];
+    }
+    
+    hidePermissionsModal() {
+        document.getElementById('permissions-modal').style.display = 'none';
+        this.currentPermissions = null;
+        this.currentPermissionsPasswordId = null;
+    }
+    
+    async addAccessToPassword() {
+        const groupId = document.getElementById('add-access-group').value;
+        const level = document.getElementById('add-access-level').value;
+        
+        if (!groupId) {
+            this.showToast('Seleziona un gruppo', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${this.currentPermissionsPasswordId}/access`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    action: 'add',
+                    group_id: parseInt(groupId),
+                    access_level: level
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast('Accesso aggiunto', 'success');
+                // Ricarica i permessi
+                await this.showPermissionsModal(this.currentPermissionsPasswordId);
+            } else {
+                this.showToast(data.error || "Errore nell'aggiunta accesso", 'error');
+            }
+        } catch (error) {
+            console.error('Error adding access:', error);
+            this.showToast("Errore nell'aggiunta accesso", 'error');
+        }
+    }
+    
+    async updateAccessLevel(accessId, newLevel) {
+        try {
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${this.currentPermissionsPasswordId}/access`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    action: 'update',
+                    access_id: accessId,
+                    access_level: newLevel
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast('Livello accesso aggiornato', 'success');
+                // Aggiorna il badge localmente
+                const groupEl = document.querySelector(`.permission-group[data-access-id="${accessId}"]`);
+                if (groupEl) {
+                    const badge = groupEl.querySelector('.permission-badge');
+                    if (badge) {
+                        badge.className = 'permission-badge ' + (newLevel === 'write' ? 'badge-write' : 'badge-read');
+                        badge.textContent = newLevel === 'write' ? 'LETTURA/SCRITTURA' : 'SOLO LETTURA';
+                    }
+                }
+            } else {
+                this.showToast(data.error || "Errore nell'aggiornamento", 'error');
+                // Ricarica per resettare stato
+                await this.showPermissionsModal(this.currentPermissionsPasswordId);
+            }
+        } catch (error) {
+            console.error('Error updating access:', error);
+            this.showToast("Errore nell'aggiornamento", 'error');
+        }
+    }
+    
+    async removeAccess(accessId) {
+        console.log('removeAccess called with accessId:', accessId);
+        
+        try {
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${this.currentPermissionsPasswordId}/access`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    action: 'remove',
+                    access_id: accessId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast('Accesso rimosso', 'success');
+                // Ricarica i permessi
+                await this.showPermissionsModal(this.currentPermissionsPasswordId);
+            } else {
+                this.showToast(data.error || 'Errore nella rimozione', 'error');
+            }
+        } catch (error) {
+            console.error('Error removing access:', error);
+            this.showToast('Errore nella rimozione', 'error');
+        }
+    }
+
 }
 
 // Helper functions for categories (ported from browser extension)
