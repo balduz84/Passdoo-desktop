@@ -1,7 +1,7 @@
 // Passdoo Desktop - Main Application
 
 // Versione dell'applicazione
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 
 class PassdooApp {
     constructor() {
@@ -237,6 +237,9 @@ class PassdooApp {
                 this.hideAboutModal();
             }
         });
+
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', () => this.refreshPasswords());
 
         // About links
         document.getElementById('about-website').addEventListener('click', async (e) => {
@@ -611,6 +614,26 @@ class PassdooApp {
                 emptyState.style.display = 'flex';
                 emptyState.querySelector('p').textContent = 'Errore nel caricamento delle password';
             }
+        }
+    }
+
+    async refreshPasswords() {
+        const refreshBtn = document.getElementById('refresh-btn');
+        
+        // Add spinning animation
+        refreshBtn.classList.add('spinning');
+        refreshBtn.disabled = true;
+        
+        try {
+            await this.loadPasswords();
+            this.showToast('Password aggiornate', 'success');
+        } catch (error) {
+            console.error('Error refreshing passwords:', error);
+            this.showToast('Errore nell\'aggiornamento', 'error');
+        } finally {
+            // Remove spinning animation
+            refreshBtn.classList.remove('spinning');
+            refreshBtn.disabled = false;
         }
     }
 
@@ -1053,7 +1076,7 @@ class PassdooApp {
                         <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                     </svg>
                 </button>
-                <button class="btn-icon copy-password-btn" title="Copia password" onclick="event.stopPropagation(); app.copyToClipboard('${this.escapeHtml(password.password || '')}', 'Password copiata')">
+                <button class="btn-icon copy-password-btn" title="Copia password" onclick="event.stopPropagation(); app.copyPassword(${password.id})">
                     <svg viewBox="0 0 24 24" width="18" height="18">
                         <path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
                     </svg>
@@ -1280,6 +1303,27 @@ class PassdooApp {
             document.execCommand('copy');
             document.body.removeChild(textarea);
             this.showToast(message || 'Copiato', 'success');
+        }
+    }
+
+
+    async copyPassword(passwordId) {
+        try {
+            // Fetch password from server
+            const response = await this.apiFetch(\`\${this.baseUrl}/passdoo/api/extension/password/\${passwordId}\`, {
+                method: 'GET'
+            });
+            
+            const data = await response.json();
+            
+            if (data.password && data.password.password_plain) {
+                await this.copyToClipboard(data.password.password_plain, 'Password copiata');
+            } else {
+                this.showToast('Impossibile recuperare la password', 'error');
+            }
+        } catch (error) {
+            console.error('Error copying password:', error);
+            this.showToast('Errore nel copiare la password', 'error');
         }
     }
 
