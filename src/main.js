@@ -413,7 +413,6 @@ class PassdooApp {
                     openBrowserBtn.innerHTML = '✓ Browser Aperto!';
                     openBrowserBtn.style.background = '#10b981';
                     console.log('Browser opened successfully');
-                console.error("Error for", id, ":", e);
             } catch (e) {
                     console.error('Error opening browser:', e);
                     // Fallback: copy URL to clipboard
@@ -537,7 +536,6 @@ class PassdooApp {
                     // Window was closed, start polling for token
                     this.startTokenPolling();
                 }
-            console.error("Error for", id, ":", e);
             } catch (e) {
                 // Cross-origin error, window still open on external page
             }
@@ -1135,7 +1133,6 @@ class PassdooApp {
             try {
                 const url = new URL(password.uri.startsWith('http') ? password.uri : 'https://' + password.uri);
                 displayUrl = url.hostname + (url.pathname !== '/' ? url.pathname : '');
-            console.error("Error for", id, ":", e);
             } catch (e) {
                 displayUrl = password.uri;
             }
@@ -1742,7 +1739,6 @@ class PassdooApp {
         try {
             const { invoke } = await import('@tauri-apps/api/core');
             await invoke('open_url', { url });
-        console.error("Error for", id, ":", e);
             } catch (e) {
             console.error('Error opening URL:', e);
             // Fallback: copy to clipboard
@@ -1975,7 +1971,6 @@ class PassdooApp {
                 } else {
                     errors++;
                 }
-            console.error("Error for", id, ":", e);
             } catch (e) {
                 errors++;
             }
@@ -2053,7 +2048,6 @@ class PassdooApp {
                 } else {
                     errors++;
                 }
-            console.error("Error for", id, ":", e);
             } catch (e) {
                 errors++;
             }
@@ -2204,11 +2198,11 @@ class PassdooApp {
                 if (data.can_manage_access) {
                     actionsHtml = `
                         <div class="permission-group-actions">
-                            <select onchange="app.updateAccessLevel(${access.id}, this.value)">
+                            <select class="access-level-select" data-access-id="${access.id}">
                                 <option value="read" ${access.access_level === 'read' ? 'selected' : ''}>Solo Lettura</option>
                                 ${data.max_assignable_level === 'write' ? `<option value="write" ${access.access_level === 'write' ? 'selected' : ''}>Lettura/Scrittura</option>` : ''}
                             </select>
-                            <button class="btn-remove" onclick="app.removeAccess(${access.id})" title="Rimuovi accesso">
+                            <button class="btn-remove" data-remove-access="${access.id}" title="Rimuovi accesso">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                                 </svg>
@@ -2259,6 +2253,25 @@ class PassdooApp {
         } else {
             addSection.style.display = 'none';
         }
+        
+        // Event delegation per bottoni rimozione accesso
+        // accessList già dichiarato sopra
+        // document.getElementById('permissions-access-list');
+        accessList.onclick = (e) => {
+            const removeBtn = e.target.closest('[data-remove-access]');
+            if (removeBtn) {
+                const accessId = parseInt(removeBtn.dataset.removeAccess);
+                this.removeAccess(accessId);
+            }
+        };
+        
+        // Event delegation per select livello accesso
+        accessList.onchange = (e) => {
+            if (e.target.classList.contains('access-level-select')) {
+                const accessId = parseInt(e.target.dataset.accessId);
+                this.updateAccessLevel(accessId, e.target.value);
+            }
+        };
     }
     
     getInitials(name) {
