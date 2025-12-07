@@ -970,7 +970,8 @@ body {
     box-shadow: var(--shadow-lg);
     opacity: 0;
     transition: transform 0.3s, opacity 0.3s;
-    z-index: 2000;
+    z-index: 10000;
+    pointer-events: none;
 }
 
 .toast.show {

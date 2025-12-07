@@ -311,6 +311,7 @@ class PassdooApp {
         
         // Permissions modal
         document.getElementById('close-permissions-modal')?.addEventListener('click', () => this.hidePermissionsModal());
+        document.getElementById('close-permissions-btn')?.addEventListener('click', () => this.hidePermissionsModal());
         document.getElementById('permissions-modal')?.addEventListener('click', (e) => {
             if (e.target.id === 'permissions-modal') this.hidePermissionsModal();
         });
@@ -1460,24 +1461,40 @@ class PassdooApp {
     }
 
     async copyToClipboard(text, message) {
-        console.log('copyToClipboard called with text length:', text ? text.length : 0);
+        if (!text) {
+            console.log('copyToClipboard: empty text, skipping');
+            return;
+        }
+        console.log('copyToClipboard called with text length:', text.length);
+        
+        let copied = false;
+        
+        // Try Tauri clipboard plugin first
         try {
-            // Use Tauri clipboard plugin
             const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
             await writeText(text);
             console.log('Copied via Tauri clipboard plugin');
-            this.showToast(message || 'Copiato', 'success');
+            copied = true;
         } catch (error) {
-            console.error('Tauri clipboard failed:', error);
-            // Fallback to navigator.clipboard
+            console.log('Tauri clipboard not available, trying fallback:', error.message);
+        }
+        
+        // Fallback to navigator.clipboard
+        if (!copied) {
             try {
                 await navigator.clipboard.writeText(text);
                 console.log('Copied via navigator.clipboard');
-                this.showToast(message || 'Copiato', 'success');
+                copied = true;
             } catch (e2) {
-                console.error('All clipboard methods failed');
-                this.showToast('Errore nella copia', 'error');
+                console.error('navigator.clipboard failed:', e2);
             }
+        }
+        
+        // Show toast
+        if (copied) {
+            this.showToast(message || 'Copiato', 'success');
+        } else {
+            this.showToast('Errore nella copia', 'error');
         }
     }
 
