@@ -1411,6 +1411,11 @@ body {
     letter-spacing: 0.3px;
 }
 
+.badge-owner {
+    background: #fef3c7;
+    color: #92400e;
+}
+
 .badge-full {
     background: #f8d7da;
     color: #721c24;
@@ -1424,6 +1429,11 @@ body {
 .badge-read {
     background: #d1ecf1;
     color: #0c5460;
+}
+
+.personal-owner-group {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #bae6fd;
 }
 
 .permission-group-description {

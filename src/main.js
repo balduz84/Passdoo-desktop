@@ -2137,20 +2137,23 @@ class PassdooApp {
         // Titolo con nome password
         document.getElementById('permissions-modal-title').textContent = `Permessi: ${passwordName}`;
         
-        // Cliente (se presente)
+        // Cliente (se presente) - nascosto per password personali
         const clientSection = document.getElementById('permissions-client-section');
         const clientNameEl = document.getElementById('permissions-client-name');
-        if (password && password.partner_name) {
+        if (password && password.partner_name && !data.is_personal) {
             clientSection.style.display = 'block';
             if (clientNameEl) clientNameEl.textContent = password.partner_name;
         } else {
             clientSection.style.display = 'none';
         }
         
-        // Admin Group (Passdoo / Amministratore - globale)
+        // Admin Group (Passdoo / Amministratore) - mostrato SOLO se shared_with_all
         const adminSection = document.getElementById('permissions-admin-section');
         if (data.admin_group) {
             adminSection.style.display = 'block';
+            // Se è owner, mostra badge ACCESSO COMPLETO
+            const adminBadge = data.admin_group.is_owner ? 
+                '<span class="permission-badge badge-owner">PROPRIETARIO</span>' : '';
             document.getElementById('admin-group-name').textContent = data.admin_group.name;
             
             // Utenti del gruppo admin
@@ -2174,9 +2177,33 @@ class PassdooApp {
             adminSection.style.display = 'none';
         }
         
-        // Owner Group (Gruppo proprietario del cliente)
+        // Sezione proprietario personale (per password non condivise)
+        const personalOwnerSection = document.getElementById('permissions-personal-owner-section');
+        if (data.is_personal && data.personal_owner) {
+            if (personalOwnerSection) {
+                personalOwnerSection.style.display = 'block';
+                const personalOwnerName = document.getElementById('personal-owner-name');
+                const personalOwnerUser = document.getElementById('personal-owner-user');
+                if (personalOwnerName) personalOwnerName.textContent = 'Password Personale';
+                if (personalOwnerUser) {
+                    const initials = this.getInitials(data.personal_owner.name);
+                    const avatarColor = this.getAvatarColor(data.personal_owner.name);
+                    personalOwnerUser.innerHTML = `
+                        <span class="permission-user">
+                            <span class="permission-user-avatar" style="background: ${avatarColor}">${this.escapeHtml(initials)}</span>
+                            ${this.escapeHtml(data.personal_owner.name)}
+                            <span class="permission-badge badge-owner">PROPRIETARIO</span>
+                        </span>
+                    `;
+                }
+            }
+        } else if (personalOwnerSection) {
+            personalOwnerSection.style.display = 'none';
+        }
+        
+        // Owner Group (Gruppo proprietario del cliente) - NON mostrare se admin_group è owner
         const ownerSection = document.getElementById('permissions-owner-section');
-        if (data.owner_group) {
+        if (data.owner_group && !(data.admin_group && data.admin_group.is_owner)) {
             ownerSection.style.display = 'block';
             document.getElementById('owner-group-name').textContent = data.owner_group.display_name || data.owner_group.name;
             
