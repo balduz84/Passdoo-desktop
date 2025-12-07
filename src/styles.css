@@ -866,15 +866,23 @@ body {
     align-items: center;
     padding: 20px 24px;
     border-bottom: 1px solid var(--border-color);
+    background: #3D0D0E;
+    border-radius: 12px 12px 0 0;
 }
 
 .modal-header h2 {
     font-size: 18px;
     font-weight: 600;
+    color: #ffffff;
 }
 
 .modal-close {
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.modal-close:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 #add-password-form {
