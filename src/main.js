@@ -315,6 +315,21 @@ class PassdooApp {
             if (e.target.id === 'permissions-modal') this.hidePermissionsModal();
         });
         document.getElementById('add-access-btn')?.addEventListener('click', () => this.addAccessToPassword());
+
+        // Edit password modal
+        document.getElementById('edit-password-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'edit-password-modal') this.hideEditPasswordModal();
+        });
+        document.getElementById('close-edit-modal')?.addEventListener('click', () => this.hideEditPasswordModal());
+        document.getElementById('cancel-edit-btn')?.addEventListener('click', () => this.hideEditPasswordModal());
+        document.getElementById('edit-password-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleEditPassword();
+        });
+        document.getElementById('toggle-edit-password')?.addEventListener('click', () => this.toggleEditPasswordVisibility());
+        document.getElementById('generate-edit-password')?.addEventListener('click', () => {
+            document.getElementById('edit-password').value = this.generatePassword();
+        });
     }
 
     /**
