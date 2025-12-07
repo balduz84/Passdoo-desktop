@@ -183,7 +183,12 @@
         <div id="add-password-modal" class="modal" style="display: none;">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Nuova Password</h2>
+                    <h2>
+                        <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;">
+                            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                        </svg>
+                        Nuova Password
+                    </h2>
                     <button class="btn-icon modal-close" id="close-modal-btn">
                         <svg viewBox="0 0 24 24" width="20" height="20">
                             <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
@@ -221,14 +226,14 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="new-client">Cliente</label>
-                            <select id="new-client">
+                            <label for="new-client" class="label-uppercase">Cliente</label>
+                            <select id="new-client" class="select-odoo">
                                 <option value="">Nessuno</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="new-category">Categoria</label>
-                            <select id="new-category">
+                            <label for="new-category" class="label-uppercase">Categoria</label>
+                            <select id="new-category" class="select-odoo">
                                 <option value="">Caricamento...</option>
                             </select>
                         </div>
