@@ -2000,66 +2000,6 @@ body {
     margin-top: 4px;
 }
 
-/* ========================================
-   SEZIONE TIPO CONDIVISIONE
-   ======================================== */
-
-.share-type-options {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.radio-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    background: var(--surface-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.radio-option:hover {
-    border-color: var(--text-secondary);
-    background: var(--bg-secondary);
-}
-
-.radio-option input[type="radio"] {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--primary-color);
-    cursor: pointer;
-    flex-shrink: 0;
-}
-
-.radio-option input[type="radio"]:checked + .radio-label {
-    color: var(--primary-color);
-    font-weight: 500;
-}
-
-.radio-option:has(input[type="radio"]:checked) {
-    border-color: var(--primary-color);
-    background: var(--primary-light);
-}
-
-.radio-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--text-primary);
-}
-
-.radio-label svg {
-    color: var(--text-secondary);
-    width: 16px;
-    height: 16px;
-}
-
 /* Sezione Selezione Utenti */
 .share-users-section,
 .share-all-section {
