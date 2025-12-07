@@ -1864,3 +1864,190 @@ body {
     flex-basis: 100%;
     margin-top: 4px;
 }
+
+/* ========================================
+   SEZIONE TIPO CONDIVISIONE
+   ======================================== */
+
+.share-type-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.radio-option:hover {
+    border-color: var(--text-secondary);
+    background: var(--bg-secondary);
+}
+
+.radio-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.radio-option input[type="radio"]:checked + .radio-label {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.radio-option:has(input[type="radio"]:checked) {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.radio-label svg {
+    color: var(--text-secondary);
+    width: 16px;
+    height: 16px;
+}
+
+/* Sezione Selezione Utenti */
+.share-users-section,
+.share-all-section {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    animation: slide-down 0.2s ease-out;
+}
+
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.share-info {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.share-info svg {
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.selected-users {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.selected-user-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--primary-light);
+    border: 1px solid var(--primary-color);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--primary-color);
+}
+
+.selected-user-tag span {
+    font-weight: 500;
+}
+
+.btn-remove-tag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--primary-color);
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.15s;
+}
+
+.btn-remove-tag:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.user-select {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: white;
+    cursor: pointer;
+}
+
+.user-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* Info Accesso Automatico */
+.auto-access-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.auto-access-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.auto-access-item svg {
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.auto-access-item.global {
+    background: #fef3cd;
+    border-color: #ffc107;
+}
+
+.auto-access-item.global svg {
+    color: #856404;
+}

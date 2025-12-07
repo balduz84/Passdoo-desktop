@@ -19,6 +19,8 @@ class PassdooApp {
         this.clientFilter = null;  // { id, name } - Filtro per cliente
         this.selectionMode = false;  // Modalità selezione multipla
         this.selectedPasswords = new Set();  // Set di password ID selezionate
+        this.availableUsers = [];  // Utenti disponibili per condivisione
+        this.selectedUserIds = [];  // Utenti selezionati per condivisione
         
         this.init();
     }
@@ -1335,10 +1337,134 @@ class PassdooApp {
     async showAddPasswordModal() {
         document.getElementById('add-password-form').reset();
         
+        // Reset sezioni condivisione
+        document.getElementById('share-users-section').style.display = 'none';
+        document.getElementById('share-all-section').style.display = 'none';
+        document.getElementById('selected-users').innerHTML = '';
+        this.selectedUserIds = [];
+        
+        // Imposta radio privata come default
+        document.querySelector('input[name="share_type"][value="private"]').checked = true;
+        
+        // Aggiungi listeners per i radio buttons
+        document.querySelectorAll('input[name="share_type"]').forEach(radio => {
+            radio.addEventListener('change', (e) => this.onShareTypeChange(e.target.value));
+        });
+        
+        // Listener per selezione utenti
+        document.getElementById('user-select').addEventListener('change', (e) => {
+            if (e.target.value) {
+                this.addUserToShare(parseInt(e.target.value));
+                e.target.value = '';
+            }
+        });
+        
         // Carica le categorie dinamicamente
         await this.loadCategories();
         
+        // Carica utenti disponibili
+        await this.loadAvailableUsers();
+        
         document.getElementById('add-password-modal').style.display = 'flex';
+    }
+    
+    /**
+     * Gestisce il cambio tipo condivisione
+     */
+    onShareTypeChange(shareType) {
+        const usersSection = document.getElementById('share-users-section');
+        const allSection = document.getElementById('share-all-section');
+        
+        usersSection.style.display = shareType === 'users' ? 'block' : 'none';
+        allSection.style.display = shareType === 'all' ? 'block' : 'none';
+    }
+    
+    /**
+     * Carica utenti disponibili per la condivisione
+     */
+    async loadAvailableUsers() {
+        const userSelect = document.getElementById('user-select');
+        
+        try {
+            const response = await fetch(`${this.baseUrl}/passdoo/api/extension/users`, {
+                method: 'GET',
+                headers: this.getAuthHeaders()
+            });
+            
+            const data = await response.json();
+            
+            userSelect.innerHTML = '<option value="">Aggiungi utente...</option>';
+            
+            if (data.success && data.users && data.users.length > 0) {
+                this.availableUsers = data.users;
+                data.users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = user.name + (user.email ? ` (${user.email})` : '');
+                    userSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading users:', error);
+            this.availableUsers = [];
+        }
+    }
+    
+    /**
+     * Aggiunge un utente alla lista condivisione
+     */
+    addUserToShare(userId) {
+        if (this.selectedUserIds.includes(userId)) return;
+        
+        this.selectedUserIds.push(userId);
+        this.renderSelectedUsers();
+    }
+    
+    /**
+     * Rimuove un utente dalla lista condivisione
+     */
+    removeUserFromShare(userId) {
+        this.selectedUserIds = this.selectedUserIds.filter(id => id !== userId);
+        this.renderSelectedUsers();
+    }
+    
+    /**
+     * Renderizza gli utenti selezionati
+     */
+    renderSelectedUsers() {
+        const container = document.getElementById('selected-users');
+        const userSelect = document.getElementById('user-select');
+        
+        container.innerHTML = '';
+        
+        this.selectedUserIds.forEach(userId => {
+            const user = this.availableUsers.find(u => u.id === userId);
+            if (user) {
+                const tag = document.createElement('div');
+                tag.className = 'selected-user-tag';
+                tag.innerHTML = `
+                    <span>${user.name}</span>
+                    <button type="button" class="btn-remove-tag" data-user-id="${userId}">
+                        <svg viewBox="0 0 24 24" width="14" height="14">
+                            <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                    </button>
+                `;
+                tag.querySelector('.btn-remove-tag').addEventListener('click', () => {
+                    this.removeUserFromShare(userId);
+                });
+                container.appendChild(tag);
+            }
+        });
+        
+        // Aggiorna le opzioni del select (nascondi gli utenti già selezionati)
+        Array.from(userSelect.options).forEach(option => {
+            if (option.value && this.selectedUserIds.includes(parseInt(option.value))) {
+                option.style.display = 'none';
+            } else {
+                option.style.display = '';
+            }
+        });
     }
 
     async loadCategories() {
@@ -1398,27 +1524,45 @@ class PassdooApp {
         const password = document.getElementById('new-password').value;
         const clientId = document.getElementById('new-client').value;
         const category = document.getElementById('new-category').value;
-        const isShared = document.getElementById('new-is-shared').checked;
         const notes = document.getElementById('new-notes').value;
+        
+        // Ottieni tipo condivisione dai radio buttons
+        const shareType = document.querySelector('input[name="share_type"]:checked').value;
+        const isShared = shareType !== 'private';
+        const sharedWithAll = shareType === 'all';
+        
+        // Validazione per condivisione utenti
+        if (shareType === 'users' && this.selectedUserIds.length === 0) {
+            this.showToast('Seleziona almeno un utente per la condivisione', 'warning');
+            return;
+        }
 
         try {
             // Determina se category è un ID numerico o una stringa
             const isNumericCategory = !isNaN(category) && category !== '';
             
+            const payload = {
+                name,
+                uri: url,
+                username,
+                password,
+                partner_id: clientId ? parseInt(clientId) : null,
+                category_id: isNumericCategory ? parseInt(category) : null,
+                category: !isNumericCategory ? (category || 'web') : null,
+                is_shared: isShared,
+                shared_with_all: sharedWithAll,
+                description: notes
+            };
+            
+            // Aggiungi utenti se condivisione con utenti specifici
+            if (shareType === 'users' && this.selectedUserIds.length > 0) {
+                payload.shared_with_user_ids = this.selectedUserIds;
+            }
+            
             const response = await fetch(`${this.baseUrl}/passdoo/api/extension/passwords`, {
                 method: 'POST',
                 headers: this.getAuthHeaders(),
-                body: JSON.stringify({
-                    name,
-                    uri: url,
-                    username,
-                    password,
-                    partner_id: clientId ? parseInt(clientId) : null,
-                    category_id: isNumericCategory ? parseInt(category) : null,
-                    category: !isNumericCategory ? (category || 'web') : null,
-                    is_shared: isShared,
-                    description: notes
-                })
+                body: JSON.stringify(payload)
             });
 
             const data = await response.json();
