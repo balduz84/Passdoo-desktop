@@ -1,7 +1,7 @@
 // Passdoo Desktop - Main Application
 
 // Versione dell'applicazione
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.7.2';
 
 class PassdooApp {
     constructor() {
@@ -2137,24 +2137,86 @@ class PassdooApp {
         // Titolo con nome password
         document.getElementById('permissions-modal-title').textContent = `Permessi: ${passwordName}`;
         
-        // Cliente (se presente) - nascosto per password personali
+        // === HEADER: Cliente + Modalità Permessi ===
         const clientSection = document.getElementById('permissions-client-section');
         const clientNameEl = document.getElementById('permissions-client-name');
         if (password && password.partner_name && !data.is_personal) {
             clientSection.style.display = 'block';
-            if (clientNameEl) clientNameEl.textContent = password.partner_name;
+            // Mostra anche la modalità permessi se disponibile
+            let modeInfo = '';
+            if (data.permission_mode && data.share_type) {
+                const shareTypeLabels = {
+                    'private': 'Privata',
+                    'group': 'Gruppo',
+                    'public': 'Pubblica',
+                    'custom': 'Personalizzata'
+                };
+                modeInfo = ` • ${data.permission_mode} (${data.permission_octal || ''}) • ${shareTypeLabels[data.share_type] || data.share_type}`;
+            }
+            if (clientNameEl) clientNameEl.innerHTML = password.partner_name + `<span style="font-size: 11px; color: #888; margin-left: 8px;">${modeInfo}</span>`;
         } else {
             clientSection.style.display = 'none';
         }
         
-        // Admin Group (Passdoo / Amministratore) - mostrato SOLO se shared_with_all
+        // === SEZIONE OWNER (Proprietario) ===
+        // Mostra sempre il proprietario con permessi rwx
+        const ownerSection = document.getElementById('permissions-personal-owner-section');
+        if (data.owner) {
+            if (ownerSection) {
+                ownerSection.style.display = 'block';
+                const personalOwnerName = document.getElementById('personal-owner-name');
+                const personalOwnerUser = document.getElementById('personal-owner-user');
+                
+                // Label diversa per password private vs condivise
+                const ownerLabel = data.is_personal ? 'Password Personale' : 'Proprietario';
+                if (personalOwnerName) personalOwnerName.textContent = ownerLabel;
+                
+                if (personalOwnerUser) {
+                    const initials = this.getInitials(data.owner.name);
+                    const avatarColor = this.getAvatarColor(data.owner.name);
+                    const permBadge = this.getPermissionBadge(data.owner.permissions || 'rwx', 'owner');
+                    personalOwnerUser.innerHTML = `
+                        <span class="permission-user">
+                            <span class="permission-user-avatar" style="background: ${avatarColor}">${this.escapeHtml(initials)}</span>
+                            ${this.escapeHtml(data.owner.name)}
+                            ${permBadge}
+                        </span>
+                    `;
+                }
+            }
+        } else if (data.is_personal && data.personal_owner) {
+            // Fallback per compatibilità con vecchia API
+            if (ownerSection) {
+                ownerSection.style.display = 'block';
+                const personalOwnerName = document.getElementById('personal-owner-name');
+                const personalOwnerUser = document.getElementById('personal-owner-user');
+                if (personalOwnerName) personalOwnerName.textContent = 'Password Personale';
+                if (personalOwnerUser) {
+                    const initials = this.getInitials(data.personal_owner.name);
+                    const avatarColor = this.getAvatarColor(data.personal_owner.name);
+                    personalOwnerUser.innerHTML = `
+                        <span class="permission-user">
+                            <span class="permission-user-avatar" style="background: ${avatarColor}">${this.escapeHtml(initials)}</span>
+                            ${this.escapeHtml(data.personal_owner.name)}
+                            <span class="permission-badge badge-owner">rwx</span>
+                        </span>
+                    `;
+                }
+            }
+        } else if (ownerSection) {
+            ownerSection.style.display = 'none';
+        }
+        
+        // === SEZIONE ADMIN (Passdoo / Amministratore) ===
         const adminSection = document.getElementById('permissions-admin-section');
-        if (data.admin_group) {
+        if (data.admin_group && !data.is_personal) {
             adminSection.style.display = 'block';
-            // Se è owner, mostra badge ACCESSO COMPLETO
-            const adminBadge = data.admin_group.is_owner ? 
-                '<span class="permission-badge badge-owner">PROPRIETARIO</span>' : '';
-            document.getElementById('admin-group-name').textContent = data.admin_group.name;
+            const permBadge = this.getPermissionBadge(data.admin_group.permissions || 'rwx', 'owner');
+            const isSuperOwner = data.admin_group.is_super_owner || data.admin_group.is_owner;
+            const adminLabel = isSuperOwner ? 
+                `${data.admin_group.name} ${permBadge} <span class="permission-badge badge-owner" style="font-size: 9px;">SUPER</span>` :
+                `${data.admin_group.name} ${permBadge}`;
+            document.getElementById('admin-group-name').innerHTML = adminLabel;
             
             // Utenti del gruppo admin
             const adminUsers = document.getElementById('admin-group-users');
@@ -2177,41 +2239,20 @@ class PassdooApp {
             adminSection.style.display = 'none';
         }
         
-        // Sezione proprietario personale (per password non condivise)
-        const personalOwnerSection = document.getElementById('permissions-personal-owner-section');
-        if (data.is_personal && data.personal_owner) {
-            if (personalOwnerSection) {
-                personalOwnerSection.style.display = 'block';
-                const personalOwnerName = document.getElementById('personal-owner-name');
-                const personalOwnerUser = document.getElementById('personal-owner-user');
-                if (personalOwnerName) personalOwnerName.textContent = 'Password Personale';
-                if (personalOwnerUser) {
-                    const initials = this.getInitials(data.personal_owner.name);
-                    const avatarColor = this.getAvatarColor(data.personal_owner.name);
-                    personalOwnerUser.innerHTML = `
-                        <span class="permission-user">
-                            <span class="permission-user-avatar" style="background: ${avatarColor}">${this.escapeHtml(initials)}</span>
-                            ${this.escapeHtml(data.personal_owner.name)}
-                            <span class="permission-badge badge-owner">PROPRIETARIO</span>
-                        </span>
-                    `;
-                }
-            }
-        } else if (personalOwnerSection) {
-            personalOwnerSection.style.display = 'none';
-        }
-        
-        // Owner Group (Gruppo proprietario del cliente) - NON mostrare se admin_group è owner
-        const ownerSection = document.getElementById('permissions-owner-section');
-        if (data.owner_group && !(data.admin_group && data.admin_group.is_owner)) {
-            ownerSection.style.display = 'block';
-            document.getElementById('owner-group-name').textContent = data.owner_group.display_name || data.owner_group.name;
+        // === SEZIONE GROUP (Gruppo Proprietario) ===
+        const groupSection = document.getElementById('permissions-owner-section');
+        const groupData = data.group || data.owner_group;  // Nuovo sistema o legacy
+        if (groupData && !data.is_personal) {
+            groupSection.style.display = 'block';
+            const permBadge = this.getPermissionBadge(groupData.permissions || 'rwx', 'group');
+            document.getElementById('owner-group-name').innerHTML = 
+                `${groupData.display_name || groupData.name} ${permBadge}`;
             
-            // Utenti del gruppo owner
+            // Utenti del gruppo
             const ownerUsers = document.getElementById('owner-group-users');
             ownerUsers.innerHTML = '';
-            if (data.owner_group.users && data.owner_group.users.length > 0) {
-                data.owner_group.users.forEach(user => {
+            if (groupData.users && groupData.users.length > 0) {
+                groupData.users.forEach(user => {
                     const initials = this.getInitials(user.name);
                     const avatarColor = this.getAvatarColor(user.name);
                     ownerUsers.innerHTML += `
@@ -2225,41 +2266,57 @@ class PassdooApp {
                 ownerUsers.innerHTML = '<span class="permission-user">Nessun utente</span>';
             }
         } else {
-            ownerSection.style.display = 'none';
+            groupSection.style.display = 'none';
         }
         
-        // Lista accessi esistenti
+        // === SEZIONE ACL / ACCESS LIST ===
         const accessList = document.getElementById('permissions-access-list');
         accessList.innerHTML = '';
         
-        if (data.access_list && data.access_list.length > 0) {
-            data.access_list.forEach(access => {
-                const badgeClass = access.access_level === 'write' ? 'badge-write' : 'badge-read';
-                const badgeLabel = access.access_level === 'write' ? 'Lettura/Scrittura' : 'Solo Lettura';
+        // Usa data.acl (nuovo) o data.access_list (legacy)
+        const aclList = data.acl || data.access_list || [];
+        
+        if (aclList.length > 0) {
+            aclList.forEach(access => {
+                // Supporta sia nuovo formato (permissions) che legacy (access_level)
+                const permissions = access.permissions || (access.access_level === 'write' ? 'rw-' : 'r--');
+                const permBadge = this.getPermissionBadge(permissions, 'acl');
                 
                 let usersHtml = '';
                 if (access.users && access.users.length > 0) {
-                    usersHtml = access.users.map(user => {
+                    const maxUsers = 10;
+                    const visibleUsers = access.users.slice(0, maxUsers);
+                    const hiddenCount = access.users.length - maxUsers;
+                    
+                    usersHtml = visibleUsers.map(user => {
                         const initials = this.getInitials(user.name);
+                        const avatarColor = this.getAvatarColor(user.name);
                         return `
                             <span class="permission-user">
-                                <span class="permission-user-avatar">${this.escapeHtml(initials)}</span>
+                                <span class="permission-user-avatar" style="background: ${avatarColor}">${this.escapeHtml(initials)}</span>
                                 ${this.escapeHtml(user.name)}
                             </span>
                         `;
                     }).join('');
+                    
+                    if (hiddenCount > 0) {
+                        usersHtml += `<span class="permission-user" style="color: #888;">+${hiddenCount} altri</span>`;
+                    }
                 } else {
                     usersHtml = '<span class="permission-user">Nessun utente</span>';
                 }
                 
-                // Sezione azioni (solo se può gestire)
+                // Sezione azioni (solo se può gestire - richiede 'x')
                 let actionsHtml = '';
-                if (data.can_manage_access) {
+                const canManage = data.can_manage_access || (data.current_user && data.current_user.can_execute);
+                if (canManage) {
+                    // Converti permissions rwx in access_level legacy per la select
+                    const currentLevel = (permissions.includes('w') || access.access_level === 'write') ? 'write' : 'read';
                     actionsHtml = `
                         <div class="permission-group-actions">
                             <select class="access-level-select" data-access-id="${access.id}">
-                                <option value="read" ${access.access_level === 'read' ? 'selected' : ''}>Solo Lettura</option>
-                                ${data.max_assignable_level === 'write' ? `<option value="write" ${access.access_level === 'write' ? 'selected' : ''}>Lettura/Scrittura</option>` : ''}
+                                <option value="read" ${currentLevel === 'read' ? 'selected' : ''}>r-- (Lettura)</option>
+                                <option value="write" ${currentLevel === 'write' ? 'selected' : ''}>rw- (Lettura/Scrittura)</option>
                             </select>
                             <button class="btn-remove" data-remove-access="${access.id}" title="Rimuovi accesso">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2270,6 +2327,8 @@ class PassdooApp {
                     `;
                 }
                 
+                const groupName = access.group_name || access.user_name || 'ACL';
+                
                 accessList.innerHTML += `
                     <div class="permission-group" data-access-id="${access.id}">
                         <div class="permission-group-header">
@@ -2279,8 +2338,8 @@ class PassdooApp {
                                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                             </svg>
-                            <span>${this.escapeHtml(access.group_name)}</span>
-                            <span class="permission-badge ${badgeClass}">${badgeLabel}</span>
+                            <span>${this.escapeHtml(groupName)}</span>
+                            ${permBadge}
                         </div>
                         <div class="permission-users">${usersHtml}</div>
                         ${actionsHtml}
@@ -2288,12 +2347,13 @@ class PassdooApp {
                 `;
             });
         } else {
-            accessList.innerHTML = '<p style="color: #666; text-align: center; padding: 16px;">Nessun altro gruppo ha accesso a questa password.</p>';
+            accessList.innerHTML = '<p style="color: #666; text-align: center; padding: 16px;">Nessun ACL aggiuntivo configurato.</p>';
         }
         
-        // Sezione aggiungi accesso (solo se può gestire)
+        // === SEZIONE AGGIUNGI ACL ===
         const addSection = document.getElementById('permissions-add-section');
-        if (data.can_manage_access && data.available_groups && data.available_groups.length > 0) {
+        const canManagePerms = data.can_manage_access || (data.current_user && data.current_user.can_execute);
+        if (canManagePerms && data.available_groups && data.available_groups.length > 0) {
             addSection.style.display = 'block';
             
             // Popola select gruppi
@@ -2303,12 +2363,12 @@ class PassdooApp {
                 groupSelect.innerHTML += `<option value="${group.id}">${this.escapeHtml(group.name)}</option>`;
             });
             
-            // Popola select livelli
+            // Popola select livelli - usa valori legacy per backend ma mostra rwx per UI
             const levelSelect = document.getElementById('add-access-level');
-            levelSelect.innerHTML = '<option value="read">Solo Lettura</option>';
-            if (data.max_assignable_level === 'write') {
-                levelSelect.innerHTML += '<option value="write">Lettura/Scrittura</option>';
-            }
+            levelSelect.innerHTML = `
+                <option value="read">r-- (Solo Lettura)</option>
+                <option value="write" selected>rw- (Lettura/Scrittura)</option>
+            `;
         } else {
             addSection.style.display = 'none';
         }
@@ -2340,6 +2400,64 @@ class PassdooApp {
             return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
         }
         return name.substring(0, 2).toUpperCase();
+    }
+    
+    /**
+     * Genera badge HTML per i permessi in stile Linux (rwx)
+     * @param {number|string} perms - Valore permessi: numero (0-7) o stringa ('rwx', 'rw-', 'r--', ecc)
+     * @param {string} role - Ruolo: 'owner', 'group', 'others', 'acl'
+     * @returns {string} HTML del badge
+     */
+    getPermissionBadge(perms, role = 'others') {
+        let canRead, canWrite, canExecute;
+        let permStr;
+        
+        if (typeof perms === 'string') {
+            // Formato stringa: 'rwx', 'rw-', 'r--', ecc.
+            permStr = perms.substring(0, 3).padEnd(3, '-');
+            canRead = permStr[0] === 'r';
+            canWrite = permStr[1] === 'w';
+            canExecute = permStr[2] === 'x';
+        } else {
+            // Formato numerico (bit mask): READ=4, WRITE=2, EXECUTE=1
+            const PERM_READ = 4;
+            const PERM_WRITE = 2;
+            const PERM_EXECUTE = 1;
+            
+            canRead = (perms & PERM_READ) !== 0;
+            canWrite = (perms & PERM_WRITE) !== 0;
+            canExecute = (perms & PERM_EXECUTE) !== 0;
+            permStr = (canRead ? 'r' : '-') + (canWrite ? 'w' : '-') + (canExecute ? 'x' : '-');
+        }
+        
+        // Colori per i diversi ruoli
+        const roleColors = {
+            owner: { bg: '#28a745', text: 'white' },      // Verde - proprietario
+            group: { bg: '#007bff', text: 'white' },      // Blu - gruppo
+            others: { bg: '#6c757d', text: 'white' },     // Grigio - altri
+            acl: { bg: '#17a2b8', text: 'white' }         // Cyan - ACL specifico
+        };
+        
+        const colors = roleColors[role] || roleColors.others;
+        
+        // Descrizione testuale
+        let description = [];
+        if (canRead) description.push('Lettura');
+        if (canWrite) description.push('Scrittura');
+        if (canExecute) description.push('Gestione');
+        const descText = description.length > 0 ? description.join(', ') : 'Nessun permesso';
+        
+        return `<span class="permission-badge" style="
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            background-color: ${colors.bg};
+            color: ${colors.text};
+            margin-left: 8px;
+        " title="${descText}">${permStr}</span>`;
     }
     
     getAvatarColor(name) {
