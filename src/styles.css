@@ -973,8 +973,9 @@ body {
 
 .radio-option {
     display: flex;
+    flex-direction: row;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     padding: 12px 14px;
     background: var(--surface-color);
     border: 1px solid var(--border-color);
@@ -1004,14 +1005,21 @@ body {
 
 .radio-label {
     display: inline-flex;
+    flex-direction: row;
     align-items: center;
     gap: 8px;
     font-size: 14px;
     color: var(--text-primary);
     white-space: nowrap;
+    flex: 1;
+}
+
+.radio-label span {
+    order: 0;
 }
 
 .radio-label svg {
+    order: 1;
     color: var(--text-secondary);
     flex-shrink: 0;
 }
