@@ -1,7 +1,7 @@
 // Passdoo Desktop - Main Application
 
 // Versione dell'applicazione
-const APP_VERSION = '1.7.2';
+const APP_VERSION = '2.0.0';
 
 class PassdooApp {
     constructor() {
