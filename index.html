@@ -191,127 +191,127 @@
                     </button>
                 </div>
                 <form id="add-password-form">
-                    <div class="form-group">
-                        <label for="new-name">Nome *</label>
-                        <input type="text" id="new-name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="new-url">URL</label>
-                        <input type="url" id="new-url" placeholder="https://...">
-                    </div>
-                    <div class="form-group">
-                        <label for="new-username">Username *</label>
-                        <input type="text" id="new-username" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="new-password">Password *</label>
-                        <div class="password-input-group">
-                            <input type="password" id="new-password" required>
-                            <button type="button" class="btn-icon" id="toggle-new-password">
-                                <svg viewBox="0 0 24 24" width="20" height="20">
-                                    <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                                </svg>
-                            </button>
-                            <button type="button" class="btn-icon" id="generate-password-btn" title="Genera password">
-                                <svg viewBox="0 0 24 24" width="20" height="20">
-                                    <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                                </svg>
-                            </button>
+                    <div class="form-body">
+                        <div class="form-group">
+                            <label for="new-name">Nome *</label>
+                            <input type="text" id="new-name" required>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="new-client">Cliente</label>
-                        <select id="new-client">
-                            <option value="">Nessuno</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="new-category">Categoria</label>
-                        <select id="new-category">
-                            <option value="">Caricamento...</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Sezione Tipo Condivisione -->
-                    <div class="form-group">
-                        <label>Condivisione</label>
-                        <div class="share-type-options">
-                            <label class="radio-option">
-                                <input type="radio" name="share_type" value="private" checked>
-                                <span class="radio-label">
-                                    <svg viewBox="0 0 24 24" width="16" height="16">
-                                        <path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                                    </svg>
-                                    Privata
-                                </span>
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="share_type" value="users">
-                                <span class="radio-label">
-                                    <svg viewBox="0 0 24 24" width="16" height="16">
-                                        <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                                    </svg>
-                                    Condividi con Utenti
-                                </span>
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="share_type" value="all">
-                                <span class="radio-label">
-                                    <svg viewBox="0 0 24 24" width="16" height="16">
-                                        <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                                    </svg>
-                                    Condividi con Tutti
-                                </span>
-                            </label>
+                        <div class="form-group">
+                            <label for="new-url">URL</label>
+                            <input type="url" id="new-url" placeholder="https://...">
                         </div>
-                    </div>
-                    
-                    <!-- Sezione Selezione Utenti (visibile solo se share_type === 'users') -->
-                    <div class="form-group share-users-section" id="share-users-section" style="display: none;">
-                        <label>Seleziona Utenti</label>
-                        <div class="share-info">
-                            <svg viewBox="0 0 24 24" width="14" height="14">
-                                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-                            </svg>
-                            Seleziona gli utenti con cui condividere questa password
+                        <div class="form-group">
+                            <label for="new-username">Username *</label>
+                            <input type="text" id="new-username" required>
                         </div>
-                        <div class="selected-users" id="selected-users"></div>
-                        <select id="user-select" class="user-select">
-                            <option value="">Aggiungi utente...</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Sezione Info Tutti (visibile solo se share_type === 'all') -->
-                    <div class="form-group share-all-section" id="share-all-section" style="display: none;">
-                        <div class="auto-access-info">
-                            <div class="auto-access-item">
-                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                    <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
-                                </svg>
-                                <span><b>Amministratore</b> del cliente - accesso completo (automatico)</span>
-                            </div>
-                            <div class="auto-access-item global">
-                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                                </svg>
-                                <span><b>Passdoo / Amministratore</b> - accesso completo (globale)</span>
+                        <div class="form-group">
+                            <label for="new-password">Password *</label>
+                            <div class="password-input-group">
+                                <input type="password" id="new-password" required>
+                                <button type="button" class="btn-icon" id="toggle-new-password">
+                                    <svg viewBox="0 0 24 24" width="20" height="20">
+                                        <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="btn-icon" id="generate-password-btn" title="Genera password">
+                                    <svg viewBox="0 0 24 24" width="20" height="20">
+                                        <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label for="new-client">Cliente</label>
+                            <select id="new-client">
+                                <option value="">Nessuno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-category">Categoria</label>
+                            <select id="new-category">
+                                <option value="">Caricamento...</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Sezione Tipo Condivisione -->
+                        <div class="form-group">
+                            <label>Condivisione</label>
+                            <div class="share-type-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="share_type" value="private" checked>
+                                    <span class="radio-label">
+                                        <svg viewBox="0 0 24 24" width="16" height="16">
+                                            <path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                                        </svg>
+                                        Privata
+                                    </span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="share_type" value="users">
+                                    <span class="radio-label">
+                                        <svg viewBox="0 0 24 24" width="16" height="16">
+                                            <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                        </svg>
+                                        Condividi con Utenti
+                                    </span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="share_type" value="all">
+                                    <span class="radio-label">
+                                        <svg viewBox="0 0 24 24" width="16" height="16">
+                                            <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                                        </svg>
+                                        Condividi con Tutti
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Sezione Selezione Utenti (visibile solo se share_type === 'users') -->
+                        <div class="form-group share-users-section" id="share-users-section" style="display: none;">
+                            <label>Seleziona Utenti</label>
+                            <div class="share-info">
+                                <svg viewBox="0 0 24 24" width="14" height="14">
+                                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                                </svg>
+                                Seleziona gli utenti con cui condividere questa password
+                            </div>
+                            <div class="selected-users" id="selected-users"></div>
+                            <select id="user-select" class="user-select">
+                                <option value="">Aggiungi utente...</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Sezione Info Tutti (visibile solo se share_type === 'all') -->
+                        <div class="form-group share-all-section" id="share-all-section" style="display: none;">
+                            <div class="auto-access-info">
+                                <div class="auto-access-item">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                                    </svg>
+                                    <span><b>Amministratore</b> del cliente - accesso completo (automatico)</span>
+                                </div>
+                                <div class="auto-access-item global">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                                    </svg>
+                                    <span><b>Passdoo / Amministratore</b> - accesso completo (globale)</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="new-notes">Note</label>
+                            <textarea id="new-notes" rows="3"></textarea>
+                        </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="new-notes">Note</label>
-                        <textarea id="new-notes" rows="3"></textarea>
-                    </div>
-                    <div class="form-actions">
+                    <div class="form-footer">
                         <button type="button" class="btn-secondary" id="cancel-add-btn">Annulla</button>
                         <button type="submit" class="btn-primary">Salva</button>
                     </div>
                 </form>
             </div>
-        </div>
-
-        <!-- Password Detail Modal -->
+        </div>        <!-- Password Detail Modal -->
         <div id="detail-modal" class="modal" style="display: none;">
             <div class="modal-content detail-modal-content">
                 <div class="modal-header detail-header">
