@@ -314,6 +314,7 @@ class PassdooApp {
         // Permissions modal
         document.getElementById('close-permissions-modal')?.addEventListener('click', () => this.hidePermissionsModal());
         document.getElementById('close-permissions-btn')?.addEventListener('click', () => this.hidePermissionsModal());
+        // NOTA: save-permissions-btn è gestito via event delegation in renderPermissionsModal
         document.getElementById('permissions-modal')?.addEventListener('click', (e) => {
             if (e.target.id === 'permissions-modal') this.hidePermissionsModal();
         });
@@ -1375,8 +1376,8 @@ class PassdooApp {
         const usersSection = document.getElementById('share-users-section');
         const allSection = document.getElementById('share-all-section');
         
-        usersSection.style.display = shareType === 'users' ? 'block' : 'none';
-        allSection.style.display = shareType === 'all' ? 'block' : 'none';
+        usersSection.style.display = shareType === 'custom' ? 'block' : 'none';
+        allSection.style.display = shareType === 'work' ? 'block' : 'none';
     }
     
     /**
@@ -1529,10 +1530,10 @@ class PassdooApp {
         // Ottieni tipo condivisione dai radio buttons
         const shareType = document.querySelector('input[name="share_type"]:checked').value;
         const isShared = shareType !== 'private';
-        const sharedWithAll = shareType === 'all';
+        const sharedWithAll = shareType === 'work';
         
-        // Validazione per condivisione utenti
-        if (shareType === 'users' && this.selectedUserIds.length === 0) {
+        // Validazione per condivisione personalizzata
+        if (shareType === 'custom' && this.selectedUserIds.length === 0) {
             this.showToast('Seleziona almeno un utente per la condivisione', 'warning');
             return;
         }
@@ -1551,11 +1552,12 @@ class PassdooApp {
                 category: !isNumericCategory ? (category || 'web') : null,
                 is_shared: isShared,
                 shared_with_all: sharedWithAll,
+                share_type: shareType,  // Invia il nuovo share_type al backend
                 description: notes
             };
             
-            // Aggiungi utenti se condivisione con utenti specifici
-            if (shareType === 'users' && this.selectedUserIds.length > 0) {
+            // Aggiungi utenti se condivisione personalizzata con utenti specifici
+            if (shareType === 'custom' && this.selectedUserIds.length > 0) {
                 payload.shared_with_user_ids = this.selectedUserIds;
             }
             
@@ -2265,16 +2267,25 @@ class PassdooApp {
             this.currentPermissionsPasswordId = id;
             
             // Popola il modal
-            this.renderPermissionsModal(data);
+            await this.renderPermissionsModal(data);
             
             document.getElementById('permissions-modal').style.display = 'flex';
+            
+            // Collega event listener per il bottone Salva usando event delegation
+            const modal = document.getElementById('permissions-modal');
+            modal.onclick = (e) => {
+                if (e.target.closest('#save-permissions-btn')) {
+                    console.log('Save button clicked via delegation!');
+                    this.savePermissions();
+                }
+            };
         } catch (error) {
             console.error('Error loading permissions:', error);
             this.showToast('Errore nel caricamento dei permessi', 'error');
         }
     }
     
-    renderPermissionsModal(data) {
+    async renderPermissionsModal(data) {
         const password = this.passwords.find(p => p.id === this.currentPermissionsPasswordId);
         const passwordName = password ? password.name : 'Password';
         
@@ -2289,11 +2300,14 @@ class PassdooApp {
             // Mostra anche la modalità permessi se disponibile
             let modeInfo = '';
             if (data.permission_mode && data.share_type) {
+                // NUOVE LABEL: private→Privata, custom→Personalizzata, work→Lavoro
                 const shareTypeLabels = {
                     'private': 'Privata',
-                    'group': 'Gruppo',
-                    'public': 'Pubblica',
-                    'custom': 'Personalizzata'
+                    'custom': 'Personalizzata',
+                    'work': 'Lavoro',
+                    // Legacy compatibility
+                    'group': 'Personalizzata',
+                    'public': 'Lavoro'
                 };
                 modeInfo = ` • ${data.permission_mode} (${data.permission_octal || ''}) • ${shareTypeLabels[data.share_type] || data.share_type}`;
             }
@@ -2302,10 +2316,110 @@ class PassdooApp {
             clientSection.style.display = 'none';
         }
         
+        // === SEZIONE MODALITA' CONDIVISIONE ===
+        // Mappa share_type backend → UI:
+        // - private → private
+        // - custom (o legacy 'group') → custom (UI: Personalizzata)
+        // - work (o legacy 'public') → work (UI: Lavoro)
+        let currentShareType = data.share_type || 'private';
+        
+        // Mappa legacy → nuovi valori
+        if (currentShareType === 'group') currentShareType = 'custom';
+        if (currentShareType === 'public') currentShareType = 'work';
+        
+        // Verifica se ci sono ACL utente esistenti
+        const hasUserAcl = (data.user_acl_list && data.user_acl_list.length > 0) ||
+                           (data.acl && data.acl.some(a => a.type === 'user' || a.acl_type === 'user'));
+        
+        // Se ci sono ACL utente e non è già 'custom', forza 'custom'
+        if (hasUserAcl && currentShareType === 'private') {
+            currentShareType = 'custom';
+        }
+        
+        // Salva il share type corrente per uso nelle sezioni successive
+        this.currentPermissionsShareType = currentShareType;
+        
+        const shareTypeSection = document.getElementById('permissions-share-type-section');
+        const canManagePermsShare = data.can_manage_access || (data.current_user && data.current_user.can_execute);
+        if (shareTypeSection && canManagePermsShare) {
+            shareTypeSection.style.display = 'block';
+            
+            const radioButtons = shareTypeSection.querySelectorAll('input[name="permissions_share_type"]');
+            radioButtons.forEach(radio => {
+                radio.checked = radio.value === currentShareType;
+            });
+            
+            // Mostra/nascondi sezione selezione utenti
+            const usersSelectSection = document.getElementById('permissions-users-select-section');
+            if (usersSelectSection) {
+                // Mostra se share_type è 'custom' O se ci sono ACL utente esistenti
+                usersSelectSection.style.display = (currentShareType === 'custom' || hasUserAcl) ? 'block' : 'none';
+                
+                // Popola la select con gli utenti disponibili
+                await this.loadPermissionsUsers(data);
+            }
+            
+            // Funzione per aggiornare la visibilità delle sezioni in base al share_type
+            const updateSectionsVisibility = (shareType) => {
+                const adminSection = document.getElementById('permissions-admin-section');
+                const groupSection = document.getElementById('permissions-owner-section');
+                const accessList = document.getElementById('permissions-access-list');
+                
+                // Se share_type è 'custom', nascondi admin, gruppi e ACL (utente gestisce manualmente)
+                if (shareType === 'custom') {
+                    if (adminSection) adminSection.style.display = 'none';
+                    if (groupSection) groupSection.style.display = 'none';
+                    if (accessList) accessList.style.display = 'none';
+                } else if (shareType === 'private') {
+                    // Privata: nascondi tutto tranne il proprietario
+                    if (adminSection) adminSection.style.display = 'none';
+                    if (groupSection) groupSection.style.display = 'none';
+                    if (accessList) accessList.style.display = 'none';
+                } else {
+                    // Lavoro (work): mostra admin e gruppi
+                    if (adminSection && data.admin_group && !data.is_personal) adminSection.style.display = 'block';
+                    if (groupSection && (data.group || data.owner_group) && !data.is_personal) groupSection.style.display = 'block';
+                    if (accessList) accessList.style.display = 'block';
+                }
+            };
+            
+            // Event listener per cambiare modalità condivisione
+            radioButtons.forEach(radio => {
+                radio.onchange = () => {
+                    const newShareType = radio.value;
+                    const usersSelectSection = document.getElementById('permissions-users-select-section');
+                    if (usersSelectSection) {
+                        usersSelectSection.style.display = newShareType === 'custom' ? 'block' : 'none';
+                    }
+                    // Aggiorna visibilità delle altre sezioni
+                    updateSectionsVisibility(newShareType);
+                    // Salva il tipo corrente localmente
+                    this.currentPermissionsShareType = newShareType;
+                };
+            });
+            
+            // Applica la visibilità iniziale
+            updateSectionsVisibility(currentShareType);
+        } else if (shareTypeSection) {
+            shareTypeSection.style.display = 'none';
+        }
+        
         // === SEZIONE OWNER (Proprietario) ===
         // Mostra sempre il proprietario con permessi rwx
         const ownerSection = document.getElementById('permissions-personal-owner-section');
-        if (data.owner) {
+        
+        // Determina chi mostrare come proprietario:
+        // 1. Se password privata, mostra l'utente corrente
+        // 2. Se l'owner è l'utente corrente (is_current_user), mostra "Tu"
+        // 3. Altrimenti mostra il nome dell'owner
+        let ownerData = data.owner;
+        let ownerDisplayName = ownerData?.name || 'Proprietario';
+        
+        if (data.is_personal || data.current_user?.is_owner || ownerData?.is_current_user) {
+            ownerDisplayName = this.currentUser?.name || 'Tu';
+        }
+        
+        if (ownerData) {
             if (ownerSection) {
                 ownerSection.style.display = 'block';
                 const personalOwnerName = document.getElementById('personal-owner-name');
@@ -2315,33 +2429,43 @@ class PassdooApp {
                 const ownerLabel = data.is_personal ? 'Password Personale' : 'Proprietario';
                 if (personalOwnerName) personalOwnerName.textContent = ownerLabel;
                 
+                // Descrizione sotto il titolo
+                const descEl = ownerSection.querySelector('.permission-group-description');
+                if (descEl) {
+                    descEl.textContent = data.is_personal 
+                        ? 'Questa password è visibile solo a te'
+                        : 'Il proprietario ha sempre accesso completo';
+                }
+                
                 if (personalOwnerUser) {
-                    const initials = this.getInitials(data.owner.name);
-                    const avatarColor = this.getAvatarColor(data.owner.name);
-                    const permBadge = this.getPermissionBadge(data.owner.permissions || 'rwx', 'owner');
+                    const initials = this.getInitials(ownerDisplayName);
+                    const avatarColor = this.getAvatarColor(ownerDisplayName);
+                    const permBadge = this.getPermissionBadge(ownerData.permissions || 'rwx', 'owner');
                     personalOwnerUser.innerHTML = `
                         <span class="permission-user">
                             <span class="permission-user-avatar" style="background: ${avatarColor}">${this.escapeHtml(initials)}</span>
-                            ${this.escapeHtml(data.owner.name)}
+                            ${this.escapeHtml(ownerDisplayName)}
                             ${permBadge}
                         </span>
                     `;
                 }
             }
         } else if (data.is_personal && data.personal_owner) {
-            // Fallback per compatibilità con vecchia API
+            // Fallback per compatibilità con vecchia API - usa utente corrente
             if (ownerSection) {
                 ownerSection.style.display = 'block';
                 const personalOwnerName = document.getElementById('personal-owner-name');
                 const personalOwnerUser = document.getElementById('personal-owner-user');
                 if (personalOwnerName) personalOwnerName.textContent = 'Password Personale';
                 if (personalOwnerUser) {
-                    const initials = this.getInitials(data.personal_owner.name);
-                    const avatarColor = this.getAvatarColor(data.personal_owner.name);
+                    // Usa l'utente corrente per password personali
+                    const userName = this.currentUser?.name || data.personal_owner.name;
+                    const initials = this.getInitials(userName);
+                    const avatarColor = this.getAvatarColor(userName);
                     personalOwnerUser.innerHTML = `
                         <span class="permission-user">
                             <span class="permission-user-avatar" style="background: ${avatarColor}">${this.escapeHtml(initials)}</span>
-                            ${this.escapeHtml(data.personal_owner.name)}
+                            ${this.escapeHtml(userName)}
                             <span class="permission-badge badge-owner">rwx</span>
                         </span>
                     `;
@@ -2352,8 +2476,10 @@ class PassdooApp {
         }
         
         // === SEZIONE ADMIN (Passdoo / Amministratore) ===
+        // Mostra solo per 'work' (Lavoro) - Passdoo Admin è super-owner
         const adminSection = document.getElementById('permissions-admin-section');
-        if (data.admin_group && !data.is_personal) {
+        const showAdminSection = data.admin_group && !data.is_personal && currentShareType === 'work';
+        if (showAdminSection) {
             adminSection.style.display = 'block';
             const permBadge = this.getPermissionBadge(data.admin_group.permissions || 'rwx', 'owner');
             const isSuperOwner = data.admin_group.is_super_owner || data.admin_group.is_owner;
@@ -2383,12 +2509,14 @@ class PassdooApp {
             adminSection.style.display = 'none';
         }
         
-        // === SEZIONE GROUP (Gruppo Proprietario) ===
+        // === SEZIONE GROUP (Gruppo Proprietario - Amministratore cliente) ===
+        // Mostra solo per 'work' (Lavoro) - Admin cliente ha rw-
         const groupSection = document.getElementById('permissions-owner-section');
         const groupData = data.group || data.owner_group;  // Nuovo sistema o legacy
-        if (groupData && !data.is_personal) {
+        const showGroupSection = groupData && !data.is_personal && currentShareType === 'work';
+        if (showGroupSection) {
             groupSection.style.display = 'block';
-            const permBadge = this.getPermissionBadge(groupData.permissions || 'rwx', 'group');
+            const permBadge = this.getPermissionBadge(groupData.permissions || 'rw-', 'group');
             document.getElementById('owner-group-name').innerHTML = 
                 `${groupData.display_name || groupData.name} ${permBadge}`;
             
@@ -2414,11 +2542,13 @@ class PassdooApp {
         }
         
         // === SEZIONE ACL / ACCESS LIST ===
+        // Mostra solo ACL di tipo 'group', gli ACL 'user' vanno nella sezione utenti
         const accessList = document.getElementById('permissions-access-list');
         accessList.innerHTML = '';
         
-        // Usa data.acl (nuovo) o data.access_list (legacy)
-        const aclList = data.acl || data.access_list || [];
+        // Filtra per mostrare solo ACL di tipo 'group' (non 'user')
+        const allAcl = data.acl || data.access_list || [];
+        const aclList = allAcl.filter(acl => acl.type !== 'user' && acl.acl_type !== 'user');
         
         if (aclList.length > 0) {
             aclList.forEach(access => {
@@ -2669,6 +2799,485 @@ class PassdooApp {
         } catch (error) {
             console.error('Error adding access:', error);
             this.showToast("Errore nell'aggiunta accesso", 'error');
+        }
+    }
+    
+    async loadPermissionsUsers(data) {
+        // Utenti già condivisi (da ACL utente diretto)
+        this.permissionsSelectedUsers = [];
+        this.userPermissions = {};  // {userId: 'r'|'rw'|'rwx'}
+        
+        // Gruppi già condivisi (da ACL gruppo)
+        this.permissionsSelectedGroups = [];
+        this.groupPermissions = {};  // {groupId: 'r'|'rw'|'rwx'}
+        
+        const selectedUsersContainer = document.getElementById('permissions-selected-users');
+        const userSelect = document.getElementById('permissions-user-select');
+        const selectedGroupsContainer = document.getElementById('permissions-selected-groups');
+        const groupSelect = document.getElementById('permissions-group-select');
+        
+        if (!selectedUsersContainer || !userSelect) return;
+        
+        // Raccogli utenti già condivisi - da user_acl_list O da acl con type='user'
+        let userAclList = data.user_acl_list || [];
+        
+        // Raccogli gruppi già condivisi - da acl con type='group'
+        let groupAclList = [];
+        
+        // Aggiungi anche ACL di tipo 'user' e 'group' da data.acl
+        const allAcl = data.acl || [];
+        allAcl.forEach(acl => {
+            if ((acl.type === 'user' || acl.acl_type === 'user') && acl.user_id) {
+                // Evita duplicati
+                if (!userAclList.find(u => u.user_id === acl.user_id)) {
+                    userAclList.push({
+                        id: acl.id,
+                        user_id: acl.user_id,
+                        user_name: acl.user_name,
+                        perm_read: acl.perm_read,
+                        perm_write: acl.perm_write,
+                        perm_execute: acl.perm_execute,
+                    });
+                }
+            }
+            // Raccogli ACL di tipo 'group'
+            if ((acl.type === 'group' || acl.acl_type === 'group') && acl.group_id) {
+                if (!groupAclList.find(g => g.group_id === acl.group_id)) {
+                    groupAclList.push({
+                        id: acl.id,
+                        group_id: acl.group_id,
+                        group_name: acl.group_name,
+                        user_count: acl.user_count || 0,
+                        perm_read: acl.perm_read,
+                        perm_write: acl.perm_write,
+                        perm_execute: acl.perm_execute,
+                    });
+                }
+            }
+        });
+        
+        // Popola utenti selezionati
+        userAclList.forEach(acl => {
+            if (acl.user_id && !this.permissionsSelectedUsers.find(u => u.id === acl.user_id)) {
+                // Determina i permessi dalla risposta
+                let perm = 'r';
+                if (acl.access_level === 'write' || acl.perm_write) perm = 'rw';
+                if (acl.perm_execute) perm = 'rwx';
+                
+                this.permissionsSelectedUsers.push({
+                    id: acl.user_id,
+                    name: acl.user_name,
+                    acl_id: acl.id  // Per rimuovere l'ACL
+                });
+                this.userPermissions[acl.user_id] = perm;
+            }
+        });
+        
+        // Popola gruppi selezionati
+        groupAclList.forEach(acl => {
+            if (acl.group_id && !this.permissionsSelectedGroups.find(g => g.id === acl.group_id)) {
+                let perm = 'r';
+                if (acl.perm_write) perm = 'rw';
+                if (acl.perm_execute) perm = 'rwx';
+                
+                this.permissionsSelectedGroups.push({
+                    id: acl.group_id,
+                    name: acl.group_name,
+                    user_count: acl.user_count || 0,
+                    acl_id: acl.id
+                });
+                this.groupPermissions[acl.group_id] = perm;
+            }
+        });
+        
+        // Renderizza utenti selezionati
+        this.renderPermissionsSelectedUsers();
+        
+        // Renderizza gruppi selezionati
+        this.renderPermissionsSelectedGroups();
+        
+        // Carica tutti gli utenti disponibili
+        try {
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/users`);
+            const usersData = await response.json();
+            
+            if (usersData.success && usersData.users) {
+                userSelect.innerHTML = '<option value="">Aggiungi utente...</option>';
+                usersData.users.forEach(user => {
+                    // Escludi utenti già selezionati e l'utente corrente
+                    if (!this.permissionsSelectedUsers.find(u => u.id === user.id) && user.id !== this.currentUser?.id) {
+                        userSelect.innerHTML += `<option value="${user.id}">${this.escapeHtml(user.name)}</option>`;
+                    }
+                });
+                
+                // Event listener per aggiungere utente
+                userSelect.onchange = async () => {
+                    const userId = parseInt(userSelect.value);
+                    if (userId) {
+                        const userName = userSelect.options[userSelect.selectedIndex].text;
+                        await this.addPermissionsUser(userId, userName);
+                        userSelect.value = '';
+                    }
+                };
+            }
+        } catch (error) {
+            console.error('Error loading users:', error);
+        }
+        
+        // Carica tutti i gruppi disponibili per il cliente
+        if (groupSelect) {
+            try {
+                // Ottieni il partner_id dalla password corrente
+                const password = this.passwords.find(p => p.id === this.currentPermissionsPasswordId);
+                const partnerId = password?.partner_id;
+                
+                if (partnerId) {
+                    const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/client/${partnerId}/groups`);
+                    const groupsData = await response.json();
+                    
+                    if (groupsData.success && groupsData.groups) {
+                        groupSelect.innerHTML = '<option value="">Aggiungi gruppo...</option>';
+                        groupsData.groups.forEach(group => {
+                            // Escludi gruppi già selezionati
+                            if (!this.permissionsSelectedGroups.find(g => g.id === group.id)) {
+                                const userCount = group.user_count || 0;
+                                groupSelect.innerHTML += `<option value="${group.id}" data-user-count="${userCount}">${this.escapeHtml(group.name)} (${userCount} utenti)</option>`;
+                            }
+                        });
+                        
+                        // Event listener per aggiungere gruppo
+                        groupSelect.onchange = async () => {
+                            const groupId = parseInt(groupSelect.value);
+                            if (groupId) {
+                                const selectedOption = groupSelect.options[groupSelect.selectedIndex];
+                                const groupName = selectedOption.text.replace(/\s*\(\d+ utenti\)$/, '');
+                                const userCount = parseInt(selectedOption.dataset.userCount) || 0;
+                                await this.addPermissionsGroup(groupId, groupName, userCount);
+                                groupSelect.value = '';
+                            }
+                        };
+                    }
+                } else {
+                    groupSelect.innerHTML = '<option value="">Nessun cliente associato</option>';
+                    groupSelect.disabled = true;
+                }
+            } catch (error) {
+                console.error('Error loading groups:', error);
+            }
+        }
+    }
+    
+    renderPermissionsSelectedUsers() {
+        const container = document.getElementById('permissions-selected-users');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        this.permissionsSelectedUsers.forEach(user => {
+            const currentPerm = this.userPermissions[user.id] || 'r';
+            container.innerHTML += `
+                <div class="selected-user-row" data-user-id="${user.id}">
+                    <span class="selected-user-name">
+                        ${this.escapeHtml(user.name)}
+                    </span>
+                    <select class="user-perm-select" data-user-id="${user.id}">
+                        <option value="r" ${currentPerm === 'r' ? 'selected' : ''}>r-- (Lettura)</option>
+                        <option value="rw" ${currentPerm === 'rw' ? 'selected' : ''}>rw- (Lettura/Scrittura)</option>
+                        <option value="rwx" ${currentPerm === 'rwx' ? 'selected' : ''}>rwx (Completo)</option>
+                    </select>
+                    <button class="btn-remove-user" data-user-id="${user.id}" title="Rimuovi">&times;</button>
+                </div>
+            `;
+        });
+        
+        // Event listeners per cambiare permessi
+        container.querySelectorAll('.user-perm-select').forEach(select => {
+            select.onchange = (e) => {
+                const userId = parseInt(e.target.dataset.userId);
+                this.userPermissions[userId] = e.target.value;
+            };
+        });
+        
+        // Event listeners per rimuovere utenti
+        container.querySelectorAll('.btn-remove-user').forEach(btn => {
+            btn.onclick = async (e) => {
+                const userId = parseInt(e.target.dataset.userId);
+                await this.removePermissionsUser(userId);
+            };
+        });
+    }
+    
+    async addPermissionsUser(userId, userName) {
+        try {
+            // NON chiamare l'API qui - il salvataggio avverrà con "Salva"
+            // Aggiungi l'utente localmente
+            this.permissionsSelectedUsers.push({ id: userId, name: userName });
+            this.userPermissions[userId] = 'r';  // Default: solo lettura
+            this.renderPermissionsSelectedUsers();
+            
+            // Rimuovi dalla select
+            const userSelect = document.getElementById('permissions-user-select');
+            if (userSelect) {
+                const option = userSelect.querySelector(`option[value="${userId}"]`);
+                if (option) option.remove();
+            }
+            
+            // Assicurati che il radio button "Personalizzata" sia selezionato
+            const customRadio = document.querySelector('input[name="permissions_share_type"][value="custom"]');
+            if (customRadio) customRadio.checked = true;
+            
+            // Mostra sezione utenti
+            const usersSection = document.getElementById('permissions-users-select-section');
+            if (usersSection) usersSection.style.display = 'block';
+            
+            this.showToast('Utente aggiunto - clicca Salva per confermare', 'success');
+        } catch (error) {
+            console.error('Error adding user:', error);
+            this.showToast("Errore nell'aggiunta utente", 'error');
+        }
+    }
+    
+    async removePermissionsUser(userId) {
+        const user = this.permissionsSelectedUsers.find(u => u.id === userId);
+        if (!user) return;
+        
+        // NON chiamare l'API qui - il salvataggio avverrà con "Salva"
+        // Rimuovi dalla lista locale
+        this.permissionsSelectedUsers = this.permissionsSelectedUsers.filter(u => u.id !== userId);
+        delete this.userPermissions[userId];
+        this.renderPermissionsSelectedUsers();
+        
+        // Re-aggiungi l'utente alla select
+        const userSelect = document.getElementById('permissions-user-select');
+        if (userSelect) {
+            const option = document.createElement('option');
+            option.value = userId;
+            option.textContent = user.name;
+            userSelect.appendChild(option);
+        }
+        
+        // Se non ci sono più utenti, suggerisci 'private'
+        if (this.permissionsSelectedUsers.length === 0) {
+            const privateRadio = document.querySelector('input[name="permissions_share_type"][value="private"]');
+            if (privateRadio) privateRadio.checked = true;
+            const usersSection = document.getElementById('permissions-users-select-section');
+            if (usersSection) usersSection.style.display = 'none';
+        }
+        
+        this.showToast('Utente rimosso - clicca Salva per confermare', 'success');
+    }
+    
+    // === GESTIONE GRUPPI ===
+    
+    renderPermissionsSelectedGroups() {
+        const container = document.getElementById('permissions-selected-groups');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (!this.permissionsSelectedGroups) {
+            this.permissionsSelectedGroups = [];
+        }
+        
+        this.permissionsSelectedGroups.forEach(group => {
+            const currentPerm = this.groupPermissions[group.id] || 'r';
+            container.innerHTML += `
+                <div class="selected-group-row" data-group-id="${group.id}">
+                    <span class="selected-group-name">
+                        ${this.escapeHtml(group.name)}
+                        <span class="group-users-count">(${group.user_count || 0} utenti)</span>
+                    </span>
+                    <select class="group-perm-select" data-group-id="${group.id}">
+                        <option value="r" ${currentPerm === 'r' ? 'selected' : ''}>r-- (Lettura)</option>
+                        <option value="rw" ${currentPerm === 'rw' ? 'selected' : ''}>rw- (Lettura/Scrittura)</option>
+                        <option value="rwx" ${currentPerm === 'rwx' ? 'selected' : ''}>rwx (Completo)</option>
+                    </select>
+                    <button class="btn-remove-group" data-group-id="${group.id}" title="Rimuovi">&times;</button>
+                </div>
+            `;
+        });
+        
+        // Event listeners per cambiare permessi
+        container.querySelectorAll('.group-perm-select').forEach(select => {
+            select.onchange = (e) => {
+                const groupId = parseInt(e.target.dataset.groupId);
+                this.groupPermissions[groupId] = e.target.value;
+            };
+        });
+        
+        // Event listeners per rimuovere gruppi
+        container.querySelectorAll('.btn-remove-group').forEach(btn => {
+            btn.onclick = async (e) => {
+                const groupId = parseInt(e.target.dataset.groupId);
+                await this.removePermissionsGroup(groupId);
+            };
+        });
+    }
+    
+    async addPermissionsGroup(groupId, groupName, userCount) {
+        try {
+            // Aggiungi il gruppo localmente
+            this.permissionsSelectedGroups.push({ id: groupId, name: groupName, user_count: userCount });
+            this.groupPermissions[groupId] = 'r';  // Default: solo lettura
+            this.renderPermissionsSelectedGroups();
+            
+            // Rimuovi dalla select
+            const groupSelect = document.getElementById('permissions-group-select');
+            if (groupSelect) {
+                const option = groupSelect.querySelector(`option[value="${groupId}"]`);
+                if (option) option.remove();
+            }
+            
+            // Assicurati che il radio button "Personalizzata" sia selezionato
+            const customRadio = document.querySelector('input[name="permissions_share_type"][value="custom"]');
+            if (customRadio) customRadio.checked = true;
+            
+            // Mostra sezione utenti/gruppi
+            const usersSection = document.getElementById('permissions-users-select-section');
+            if (usersSection) usersSection.style.display = 'block';
+            
+            this.showToast('Gruppo aggiunto - clicca Salva per confermare', 'success');
+        } catch (error) {
+            console.error('Error adding group:', error);
+            this.showToast("Errore nell'aggiunta gruppo", 'error');
+        }
+    }
+    
+    async removePermissionsGroup(groupId) {
+        const group = this.permissionsSelectedGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        // Rimuovi dalla lista locale
+        this.permissionsSelectedGroups = this.permissionsSelectedGroups.filter(g => g.id !== groupId);
+        delete this.groupPermissions[groupId];
+        this.renderPermissionsSelectedGroups();
+        
+        // Re-aggiungi il gruppo alla select
+        const groupSelect = document.getElementById('permissions-group-select');
+        if (groupSelect) {
+            const option = document.createElement('option');
+            option.value = groupId;
+            option.textContent = `${group.name} (${group.user_count || 0} utenti)`;
+            option.dataset.userCount = group.user_count || 0;
+            groupSelect.appendChild(option);
+        }
+        
+        this.showToast('Gruppo rimosso - clicca Salva per confermare', 'success');
+    }
+
+    async savePermissions() {
+        try {
+            // Verifica che abbiamo l'ID password
+            if (!this.currentPermissionsPasswordId) {
+                this.showToast('Errore: ID password non trovato', 'error');
+                return;
+            }
+            
+            // Determina il share_type selezionato
+            const selectedRadio = document.querySelector('input[name="permissions_share_type"]:checked');
+            let shareType = selectedRadio ? selectedRadio.value : 'private';
+            
+            console.log('Saving permissions - shareType UI:', shareType);
+            console.log('Saving permissions - passwordId:', this.currentPermissionsPasswordId);
+            console.log('Saving permissions - selectedUsers:', this.permissionsSelectedUsers);
+            console.log('Saving permissions - userPermissions:', this.userPermissions);
+            console.log('Saving permissions - selectedGroups:', this.permissionsSelectedGroups);
+            console.log('Saving permissions - groupPermissions:', this.groupPermissions);
+            
+            // I valori UI (private, custom, work) corrispondono direttamente ai valori backend
+            // Non è necessario alcun mapping
+            
+            // Raccogli gli user IDs selezionati
+            const userIds = this.permissionsSelectedUsers ? this.permissionsSelectedUsers.map(u => u.id) : [];
+            
+            // Costruisci mappa permessi utente
+            const userPermissionsMap = {};
+            for (const userId in this.userPermissions) {
+                userPermissionsMap[userId] = this.userPermissions[userId];
+            }
+            
+            // Raccogli i group IDs selezionati
+            const groupIds = this.permissionsSelectedGroups ? this.permissionsSelectedGroups.map(g => g.id) : [];
+            
+            // Costruisci mappa permessi gruppo
+            const groupPermissionsMap = {};
+            for (const groupId in this.groupPermissions) {
+                groupPermissionsMap[groupId] = this.groupPermissions[groupId];
+            }
+            
+            const body = {
+                action: 'save_permissions',
+                share_type: shareType,
+                user_ids: userIds,
+                user_permissions: userPermissionsMap,
+                group_ids: groupIds,
+                group_permissions: groupPermissionsMap
+            };
+            
+            console.log('Saving permissions - body:', body);
+            
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${this.currentPermissionsPasswordId}/access`, {
+                method: 'PUT',
+                body: JSON.stringify(body)
+            });
+            
+            console.log('Saving permissions - response status:', response.status);
+            
+            // Controlla se la risposta è OK
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Saving permissions - error response:', errorText);
+                this.showToast(`Errore HTTP ${response.status}`, 'error');
+                return;
+            }
+            
+            const data = await response.json();
+            console.log('Saving permissions - response data:', data);
+            
+            if (data.success) {
+                this.showToast('Permessi salvati con successo', 'success');
+                this.hidePermissionsModal();
+                // Aggiorna la lista password
+                await this.loadPasswords();
+            } else {
+                this.showToast(data.error || 'Errore nel salvataggio', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving permissions:', error);
+            this.showToast('Errore nel salvataggio permessi', 'error');
+        }
+    }
+    
+    async updateShareType(shareType, ownerGroupId = null) {
+        try {
+            const body = {
+                action: 'update_share_type',
+                share_type: shareType
+            };
+            if (ownerGroupId) {
+                body.owner_group_id = ownerGroupId;
+            }
+            
+            const response = await this.apiFetch(`${this.baseUrl}/passdoo/api/extension/password/${this.currentPermissionsPasswordId}/access`, {
+                method: 'PUT',
+                body: JSON.stringify(body)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast('Modalità condivisione aggiornata', 'success');
+                // Ricarica i permessi per aggiornare la UI
+                await this.showPermissionsModal(this.currentPermissionsPasswordId);
+                // Aggiorna anche la lista password
+                await this.loadPasswords();
+            } else {
+                this.showToast(data.error || "Errore nell'aggiornamento", 'error');
+                // Ricarica per resettare stato
+                await this.showPermissionsModal(this.currentPermissionsPasswordId);
+            }
+        } catch (error) {
+            console.error('Error updating share type:', error);
+            this.showToast("Errore nell'aggiornamento della condivisione", 'error');
         }
     }
     

@@ -1029,6 +1029,187 @@ body {
     font-weight: 500;
 }
 
+/* Opzioni condivisione nel modal permessi - compatte */
+.permissions-share-options {
+    flex-direction: row;
+    gap: 6px;
+}
+
+.permissions-share-options .radio-option {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    justify-content: center;
+}
+
+.permissions-share-options .radio-option input[type="radio"] {
+    width: 14px;
+    height: 14px;
+}
+
+.permissions-share-options .radio-label {
+    font-size: 12px;
+    gap: 4px;
+}
+
+.permissions-share-options .radio-label svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* Sezione utenti selezionati nel modal permessi */
+#permissions-selected-users {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+/* Sottosezioni per utenti e gruppi */
+.permissions-subsection {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--surface-color);
+}
+
+.permissions-subsection .subsection-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.permissions-subsection .subsection-header svg {
+    opacity: 0.7;
+}
+
+/* Stili per gruppi selezionati */
+#permissions-selected-groups .selected-group-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 6px;
+}
+
+#permissions-selected-groups .selected-group-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+#permissions-selected-groups .selected-group-name .group-users-count {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin-left: 6px;
+}
+
+#permissions-selected-groups .group-perm-select {
+    padding: 4px 8px;
+    font-size: 11px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--surface-color);
+    font-family: 'Courier New', monospace;
+    min-width: 140px;
+}
+
+#permissions-selected-groups .btn-remove-group {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#permissions-selected-groups .btn-remove-group:hover {
+    background: var(--error-color);
+    color: white;
+}
+
+#permissions-selected-users .selected-user-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+#permissions-selected-users .selected-user-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+#permissions-selected-users .user-perm-select {
+    padding: 4px 8px;
+    font-size: 11px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    font-family: 'Courier New', monospace;
+    min-width: 140px;
+}
+
+#permissions-selected-users .btn-remove-user {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#permissions-selected-users .btn-remove-user:hover {
+    background: var(--error-color);
+    color: white;
+}
+
+/* Legacy support for old format */
+#permissions-selected-users .selected-user {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    font-size: 12px;
+}
+
+#permissions-selected-users .selected-user .remove-user {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1;
+}
+
+#permissions-selected-users .selected-user .remove-user:hover {
+    color: var(--danger-color);
+}
+
 .checkbox-label {
     display: flex;
     align-items: center;
@@ -1284,6 +1465,9 @@ body {
 
 .modal-body {
     padding: 12px;
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(90vh - 140px); /* Altezza massima meno header e footer */
 }
 
 .modal-footer {
@@ -1292,6 +1476,10 @@ body {
     gap: 10px;
     padding: 16px 20px;
     border-top: 1px solid var(--border-color);
+    position: relative;
+    z-index: 100;
+    flex-shrink: 0;
+    background: var(--surface-color);
 }
 
 .form-group {
